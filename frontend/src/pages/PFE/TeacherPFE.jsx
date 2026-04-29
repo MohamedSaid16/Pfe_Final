@@ -38,10 +38,11 @@ function SkeletonList({ count = 3 }) {
 function TeacherSubjectsView({ subjects, loading, error, onRefresh, teacherProfileId, onRetry }) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    titre_ar: '', titre_en: '', description_ar: '', description_en: '', typeProjet: 'application', maxGrps: 1,
+    titre_ar: '', titre_en: '', description_ar: '', description_en: '', typeProjet: 'application', maxGrps: 1, promoId: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [teacherPromos, setTeacherPromos] = useState([]);
 
   // ── Submission lock state ───────────────────────────────────
   const [submissionOpen, setSubmissionOpen] = useState(null); // null = loading
@@ -59,10 +60,31 @@ function TeacherSubjectsView({ subjects, loading, error, onRefresh, teacherProfi
     return () => { cancelled = true; };
   }, []);
 
+  // ── Fetch allowed promos for dropdown ───────────────────────
+  React.useEffect(() => {
+    if (!teacherProfileId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await request(`/api/v1/pfe/teacher/${teacherProfileId}/promos`);
+        if (!cancelled && res?.data) {
+          setTeacherPromos(res.data);
+          // Auto-select first promo if only one
+          if (res.data.length === 1) {
+            setFormData(p => ({ ...p, promoId: String(res.data[0].id) }));
+          }
+        }
+      } catch {
+        if (!cancelled) setTeacherPromos([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [teacherProfileId]);
+
   const canCreate = teacherProfileId && submissionOpen !== false;
 
   const resetForm = () => {
-    setFormData({ titre_ar: '', titre_en: '', description_ar: '', description_en: '', typeProjet: 'application', maxGrps: 1 });
+    setFormData({ titre_ar: '', titre_en: '', description_ar: '', description_en: '', typeProjet: 'application', maxGrps: 1, promoId: teacherPromos.length === 1 ? String(teacherPromos[0].id) : '' });
     setSubmitError(null);
     setShowForm(false);
   };
@@ -78,7 +100,11 @@ function TeacherSubjectsView({ subjects, loading, error, onRefresh, teacherProfi
     try {
       await request('/api/v1/pfe/sujets', {
         method: 'POST',
-        body: JSON.stringify({ ...formData, enseignantId: Number(teacherProfileId) }),
+        body: JSON.stringify({
+          ...formData,
+          enseignantId: Number(teacherProfileId),
+          promoId: formData.promoId ? Number(formData.promoId) : undefined,
+        }),
       });
       resetForm();
       onRefresh();
@@ -148,7 +174,7 @@ function TeacherSubjectsView({ subjects, loading, error, onRefresh, teacherProfi
               <textarea rows={3} value={formData.description_en} onChange={e => setFormData(p => ({ ...p, description_en: e.target.value }))} className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 resize-none" />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
              <div className="space-y-1.5">
                <label className="block text-xs font-semibold text-ink-secondary uppercase">Project Type</label>
                <select value={formData.typeProjet} onChange={e => setFormData(p => ({...p, typeProjet: e.target.value}))} className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2">
@@ -160,6 +186,23 @@ function TeacherSubjectsView({ subjects, loading, error, onRefresh, teacherProfi
              <div className="space-y-1.5">
                <label className="block text-xs font-semibold text-ink-secondary uppercase">Max Groups</label>
                <input type="number" min={1} max={5} value={formData.maxGrps} onChange={e => setFormData(p => ({...p, maxGrps: parseInt(e.target.value, 10)}))} className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2" />
+             </div>
+             <div className="space-y-1.5">
+               <label className="block text-xs font-semibold text-ink-secondary uppercase">Promo *</label>
+               <select required value={formData.promoId} onChange={e => setFormData(p => ({...p, promoId: e.target.value}))} className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2">
+                 {teacherPromos.length === 0 ? (
+                   <option value="">No promo assigned</option>
+                 ) : (
+                   <>
+                     <option value="">Select promo...</option>
+                     {teacherPromos.map(p => (
+                       <option key={p.id} value={p.id}>
+                         {p.nom_en || p.nom_ar}{p.specialite ? ` — ${p.specialite.nom_en || p.specialite.nom_ar}` : ''}
+                       </option>
+                     ))}
+                   </>
+                 )}
+               </select>
              </div>
           </div>
           <div className="flex justify-end gap-3 pt-2 border-t border-edge-subtle">
@@ -251,11 +294,97 @@ function TeacherGroupsOverview({ groups, loading, error, onRetry }) {
   );
 }
 
-function DefensePanel() {
+function DefensePanel({ teacherId }) {
+  const [myJuries, setMyJuries] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    if (!teacherId) return;
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await request('/api/v1/pfe/jury');
+        if (!alive) return;
+        // Filter jury entries where this teacher is involved
+        const filtered = (res?.data || []).filter(j => j.enseignantId === Number(teacherId));
+        setMyJuries(filtered);
+      } catch (err) {
+        if (alive) setError('Failed to load defense schedule.');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [teacherId]);
+
   return (
     <div className="space-y-4">
-      <SectionHeader eyebrow="Defense Planning" title="Defense Schedule" subtitle="Oral defense sessions and jury assignments" />
-      <EmptyState icon={CalendarDays} title="Defense planning coming soon" hint="This module is under development." />
+      <SectionHeader eyebrow="Defense Planning" title="My Defense Schedule" subtitle="Your assigned jury roles and oral defense sessions" />
+
+      {loading ? (
+        <SkeletonList count={2} />
+      ) : error ? (
+        <ErrorBanner error={{ message: error }} />
+      ) : myJuries.length === 0 ? (
+        <EmptyState icon={CalendarDays} title="No defense sessions" hint="You are not assigned to any jury yet." />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {myJuries.map((j) => (
+            <div key={j.id} className="rounded-2xl border border-edge bg-surface p-5 shadow-card hover:shadow-card-hover transition-all">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${j.role === 'president' ? 'bg-brand/10 text-brand' : 'bg-success/10 text-success'}`}>
+                    {j.role}
+                  </span>
+                  <h3 className="text-base font-bold text-ink mt-1">
+                    {j.groupPfe?.nom_ar || j.groupPfe?.nom_en || `Group #${j.groupId}`}
+                  </h3>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-ink">{j.groupPfe?.salleSoutenance || 'TBD'}</p>
+                  <p className="text-xs text-ink-tertiary">Room</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-xl bg-surface-200/50 p-3">
+                  <p className="text-xs font-semibold text-ink-tertiary uppercase mb-1">Subject</p>
+                  <p className="text-sm font-medium text-ink line-clamp-2">
+                    {j.groupPfe?.sujetFinal?.titre_ar || j.groupPfe?.sujetFinal?.titre_en || 'N/A'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg bg-brand/5 p-2 text-brand">
+                      <CalendarDays className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-ink-tertiary uppercase leading-none">Date</p>
+                      <p className="text-sm font-bold text-ink">
+                        {j.groupPfe?.dateSoutenance ? new Date(j.groupPfe.dateSoutenance).toLocaleDateString() : 'Unscheduled'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg bg-warning/5 p-2 text-warning">
+                      <Loader2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-ink-tertiary uppercase leading-none">Time</p>
+                      <p className="text-sm font-bold text-ink">
+                        {j.groupPfe?.dateSoutenance ? new Date(j.groupPfe.dateSoutenance).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -283,7 +412,7 @@ export default function TeacherPFE({
       );
       return <TeacherGroupsOverview groups={myGroups} loading={loading} error={error} onRetry={retryActiveTab} />;
     }
-    if (activeTab === 'defense') return <DefensePanel />;
+    if (activeTab === 'defense') return <DefensePanel teacherId={teacherProfileId} />;
     return null;
   };
 

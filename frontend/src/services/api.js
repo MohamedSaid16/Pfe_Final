@@ -852,6 +852,12 @@ export const affectationAPI = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  importAverages: (payload) =>
+    request('/api/v1/affectation/bulk/import-averages', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
 
 export default request;

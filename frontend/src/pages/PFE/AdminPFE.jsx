@@ -285,11 +285,286 @@ function AdminGroupsOverview({ groups, loading, error, onRetry }) {
   );
 }
 
-function DefensePanel() {
+function DefensePanel({ groups }) {
+  const [teachers, setTeachers] = useState([]);
+  const [juryData, setJuryData] = useState({});
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [formData, setFormData] = useState({ presidentId: '', members: [], date: '', time: '', room: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const groupList = Array.isArray(groups) ? groups : [];
+
+  // Fetch teachers + existing jury data
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoadingTeachers(true);
+      try {
+        const [teachersRes, juryRes] = await Promise.all([
+          request('/api/v1/admin/users?role=enseignant&limit=1000'),
+          request('/api/v1/pfe/jury'),
+        ]);
+        if (!alive) return;
+        setTeachers(teachersRes?.data?.users || teachersRes?.data || []);
+        // Group jury by groupId
+        const jMap = {};
+        for (const j of (juryRes?.data || [])) {
+          if (!j.groupId) continue;
+          if (!jMap[j.groupId]) jMap[j.groupId] = [];
+          jMap[j.groupId].push(j);
+        }
+        setJuryData(jMap);
+      } catch { /* swallow */ }
+      finally { if (alive) setLoadingTeachers(false); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const openGroup = (group) => {
+    setSelectedGroup(group);
+    setError('');
+    setSuccess('');
+    const existing = juryData[group.id] || [];
+    const president = existing.find(j => j.role === 'president');
+    const members = existing.filter(j => j.role !== 'president');
+    setFormData({
+      presidentId: president?.enseignant?.id ? String(president.enseignant.id) : '',
+      members: members.map(m => ({ enseignantId: String(m.enseignant?.id || ''), role: m.role || 'examinateur' })),
+      date: group.dateSoutenance ? new Date(group.dateSoutenance).toISOString().split('T')[0] : '',
+      time: group.dateSoutenance ? new Date(group.dateSoutenance).toISOString().slice(11, 16) : '',
+      room: group.salleSoutenance || '',
+    });
+  };
+
+  const handleAddMember = () => {
+    setFormData(p => ({ ...p, members: [...p.members, { enseignantId: '', role: 'examinateur' }] }));
+  };
+
+  const handleRemoveMember = (idx) => {
+    setFormData(p => ({ ...p, members: p.members.filter((_, i) => i !== idx) }));
+  };
+
+  const handleSave = async () => {
+    if (!selectedGroup || !formData.presidentId) {
+      setError('President is required.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await request(`/api/v1/pfe/admin/groups/${selectedGroup.id}/jury/compose`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          presidentId: Number(formData.presidentId),
+          members: formData.members.filter(m => m.enseignantId).map(m => ({
+            enseignantId: Number(m.enseignantId),
+            role: m.role,
+          })),
+          date: formData.date || null,
+          time: formData.time || null,
+          room: formData.room || null,
+        }),
+      });
+      // Refresh jury data
+      const juryRes = await request('/api/v1/pfe/jury');
+      const jMap = {};
+      for (const j of (juryRes?.data || [])) {
+        if (!j.groupId) continue;
+        if (!jMap[j.groupId]) jMap[j.groupId] = [];
+        jMap[j.groupId].push(j);
+      }
+      setJuryData(jMap);
+      setSuccess('Jury composed successfully! Alerts sent to students and jury members.');
+    } catch (err) {
+      setError(err?.message || 'Failed to compose jury.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getTeacherLabel = (t) => `${t.prenom || ''} ${t.nom || ''}`.trim() || t.email || `#${t.id}`;
+
   return (
     <div className="space-y-4">
-      <SectionHeader eyebrow="Defense Planning" title="Defense Schedule" subtitle="Oral defense sessions and jury assignments" />
-      <EmptyState icon={CalendarDays} title="Defense planning coming soon" hint="This module is under development." />
+      <SectionHeader
+        eyebrow="Defense Planning"
+        title="Jury Management"
+        subtitle="Assign jury members and schedule defenses for each PFE group"
+      />
+
+      {groupList.length === 0 ? (
+        <EmptyState icon={CalendarDays} title="No groups found" hint="Create PFE groups first, then assign juries." />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-5">
+          {/* Group list */}
+          <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+            {groupList.map(group => {
+              const hasJury = (juryData[group.id] || []).length > 0;
+              const isSelected = selectedGroup?.id === group.id;
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => openGroup(group)}
+                  className={`w-full text-left rounded-2xl border p-4 transition-all ${isSelected ? 'border-brand bg-brand/5 shadow-md' : 'border-edge bg-surface hover:bg-surface-200/50'}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-semibold text-ink truncate">{group.nom_ar || group.nom_en || `Group #${group.id}`}</h4>
+                    {hasJury ? (
+                      <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success">
+                        <CheckCircle2 className="w-3 h-3" /> Jury Set
+                      </span>
+                    ) : (
+                      <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-ink-tertiary mt-1 truncate">
+                    {group.sujetFinal?.titre_ar || group.sujetFinal?.titre_en || 'No subject'}
+                  </p>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    {group.groupMembers?.length || 0} members
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Jury form */}
+          {selectedGroup ? (
+            <div className="rounded-2xl border border-edge bg-surface p-6 shadow-card space-y-5">
+              <div>
+                <h3 className="text-base font-bold text-ink">
+                  {selectedGroup.nom_ar || selectedGroup.nom_en || `Group #${selectedGroup.id}`}
+                </h3>
+                <p className="text-xs text-ink-tertiary mt-0.5">
+                  Subject: {selectedGroup.sujetFinal?.titre_ar || selectedGroup.sujetFinal?.titre_en || 'None'}
+                </p>
+              </div>
+
+              {error && <div className="rounded-xl border border-danger/30 bg-danger/5 px-4 py-2.5 text-sm text-danger">{error}</div>}
+              {success && <div className="rounded-xl border border-success/30 bg-success/5 px-4 py-2.5 text-sm text-success">{success}</div>}
+
+              {/* President */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-ink-secondary uppercase">President (Required) *</label>
+                <select
+                  value={formData.presidentId}
+                  onChange={e => setFormData(p => ({ ...p, presidentId: e.target.value }))}
+                  className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2.5 text-sm text-ink outline-none focus:border-brand focus:ring-2"
+                >
+                  <option value="">Select president...</option>
+                  {teachers.map(t => (
+                    <option key={t.id} value={t.enseignant?.id || t.id}>{getTeacherLabel(t)}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Members */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-ink-secondary uppercase">Jury Members</label>
+                  <button type="button" onClick={handleAddMember} className="text-xs font-semibold text-brand hover:text-brand-hover">+ Add Member</button>
+                </div>
+                {formData.members.map((m, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <select
+                      value={m.enseignantId}
+                      onChange={e => {
+                        const members = [...formData.members];
+                        members[idx] = { ...members[idx], enseignantId: e.target.value };
+                        setFormData(p => ({ ...p, members }));
+                      }}
+                      className="flex-1 rounded-xl border border-edge-subtle bg-control-bg px-2.5 py-2 text-sm text-ink outline-none focus:border-brand"
+                    >
+                      <option value="">Select teacher...</option>
+                      {teachers.map(t => (
+                        <option key={t.id} value={t.enseignant?.id || t.id}>{getTeacherLabel(t)}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={m.role}
+                      onChange={e => {
+                        const members = [...formData.members];
+                        members[idx] = { ...members[idx], role: e.target.value };
+                        setFormData(p => ({ ...p, members }));
+                      }}
+                      className="w-36 rounded-xl border border-edge-subtle bg-control-bg px-2.5 py-2 text-sm text-ink outline-none focus:border-brand"
+                    >
+                      <option value="examinateur">Examinateur</option>
+                      <option value="rapporteur">Rapporteur</option>
+                    </select>
+                    <button type="button" onClick={() => handleRemoveMember(idx)} className="text-danger p-1 hover:bg-danger/10 rounded-lg">
+                      <XCircle className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Date / Time / Room */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-ink-secondary uppercase">Defense Date</label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={e => setFormData(p => ({ ...p, date: e.target.value }))}
+                    className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-ink-secondary uppercase">Time</label>
+                  <input
+                    type="time"
+                    value={formData.time}
+                    onChange={e => setFormData(p => ({ ...p, time: e.target.value }))}
+                    className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-ink-secondary uppercase">Room</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Amphi A"
+                    value={formData.room}
+                    onChange={e => setFormData(p => ({ ...p, room: e.target.value }))}
+                    className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2"
+                  />
+                </div>
+              </div>
+
+              {/* Save */}
+              <div className="flex justify-end gap-3 pt-3 border-t border-edge-subtle">
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroup(null)}
+                  className="px-4 py-2 text-sm font-medium rounded-xl border border-edge bg-surface text-ink hover:bg-surface-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || !formData.presidentId}
+                  className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-xl bg-brand text-surface hover:bg-brand-hover disabled:opacity-50 transition-all"
+                >
+                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {saving ? 'Saving...' : 'Save Jury & Schedule'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-edge bg-surface p-8 flex items-center justify-center">
+              <p className="text-sm text-ink-tertiary">← Select a group to manage its jury</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -309,7 +584,7 @@ export default function AdminPFE({
   const renderCenter = () => {
     if (activeTab === 'subjects') return <AdminValidationQueue subjects={subjects} loading={loading} error={error} onValidate={handleValidate} onReject={handleReject} onRetry={retryActiveTab} />;
     if (activeTab === 'groups') return <AdminGroupsOverview groups={groups} loading={loading} error={error} onRetry={retryActiveTab} />;
-    if (activeTab === 'defense') return <DefensePanel />;
+    if (activeTab === 'defense') return <DefensePanel groups={groups} />;
     if (activeTab === 'config') return <PFEConfigCard />;
     return null;
   };

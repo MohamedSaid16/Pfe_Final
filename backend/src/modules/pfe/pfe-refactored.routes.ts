@@ -6,9 +6,10 @@ import {
   getSubmissionFlagHandler,
   setStudentVisibilityHandler,
   setSubmissionFlagHandler,
+  updatePfeConfigHandler,
 } from "./pfe-config.controller";
 import { listMyJuryHandler } from "./pfe-jury-me.controller";
-import { getMyTeacherSubjectQuotaHandler } from "./pfe-teacher.controller";
+import { getMyTeacherSubjectQuotaHandler, getTeacherPromosHandler } from "./pfe-teacher.controller";
 import { composeJuryHandler } from "./pfe-jury-admin.controller";
 
 const pfeRoutes = require("./index.js");
@@ -41,12 +42,14 @@ pfeRoutes.put(
   setStudentVisibilityHandler,
 );
 
-// ── Bundled config snapshot (used by the admin UI) ─────────────
+// ── Bundled config snapshot + bulk update (admin) ──────────────
 pfeRoutes.get("/admin/config", requireAuth, requireRole(["admin"]), getPfeConfigSnapshotHandler);
+pfeRoutes.put("/admin/config", requireAuth, requireRole(["admin"]), updatePfeConfigHandler);
 
-// ── Teacher jury view + subject quota ──────────────────────────
+// ── Teacher jury view + subject quota + promos ─────────────────
 pfeRoutes.get("/jury/me", requireAuth, listMyJuryHandler);
 pfeRoutes.get("/teacher/quota", requireAuth, getMyTeacherSubjectQuotaHandler);
+pfeRoutes.get("/teacher/:enseignantId/promos", requireAuth, getTeacherPromosHandler);
 
 // ── Admin: compose the full jury for a group in one call ───────
 pfeRoutes.put(
