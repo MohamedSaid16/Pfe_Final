@@ -495,6 +495,8 @@ export const listUsers = async (filters: UserListFilters) => {
         status: true,
         createdAt: true,
         lastLogin: true,
+        enseignant: { select: { id: true } },
+        etudiant: { select: { id: true } },
         userRoles: {
           select: {
             role: {
@@ -524,6 +526,8 @@ export const listUsers = async (filters: UserListFilters) => {
       lastLogin: user.lastLogin,
       roles: roleNames,
       role: toCanonicalRole(roleNames),
+      enseignant: user.enseignant,
+      etudiant: user.etudiant,
     };
   });
 

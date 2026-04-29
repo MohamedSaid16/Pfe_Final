@@ -33,6 +33,12 @@ export const listMyJuryHandler = async (req: AuthRequest, res: Response): Promis
     const rows = await prisma.pfeJury.findMany({
       where: { enseignantId: enseignant.id },
       include: {
+        enseignant: {
+          select: {
+            id: true,
+            user: { select: { nom: true, prenom: true, email: true } },
+          },
+        },
         group: {
           select: {
             id: true,

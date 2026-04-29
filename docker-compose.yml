@@ -1,0 +1,139 @@
+# ─────────────────────────────────────────────────────────────
+# University Management System — full-stack docker-compose
+#
+#   db          → PostgreSQL 16
+#   backend     → Node.js + Express + Prisma  (port 5000)
+#   ai-service  → FastAPI + PyTorch           (port 5001)
+#   frontend    → React build served by nginx (port 3000 → 80)
+#
+# Usage:
+#   cp .env.example .env       # then edit secrets
+#   docker compose up -d --build
+# ─────────────────────────────────────────────────────────────
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: univ_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-university_db}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      # Expose only on loopback so it isn't reachable from the LAN.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-university_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [univ_net]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: univ_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-university_db}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-10}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5000}
+      CLIENT_URLS: ${CLIENT_URLS:-http://localhost:3000}
+      # Email (optional — leave empty to disable)
+      EMAIL_SERVICE: ${EMAIL_SERVICE:-}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      # AI integrations (optional)
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      AI_SERVICE_URL: http://ai-service:5001
+    volumes:
+      # Persist user uploads across rebuilds.
+      - backend_uploads:/app/uploads
+    ports:
+      - "5000:5000"
+    networks: [univ_net]
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: univ_ai
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: ${NODE_ENV:-production}
+      HOST: 0.0.0.0
+      PORT: 5001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-university_db}
+      JWT_SECRET_KEY: ${JWT_ACCESS_SECRET}
+      LOG_LEVEL: ${AI_LOG_LEVEL:-INFO}
+    volumes:
+      # Cache HuggingFace / torch models so subsequent starts are fast.
+      - ai_cache:/app/.cache
+      - ai_data:/app/data
+    ports:
+      - "5001:5001"
+    networks: [univ_net]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5001/').status == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # CRA bakes these into the bundle at build time.
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000/api/v1}
+        REACT_APP_AI_URL: ${REACT_APP_AI_URL:-http://localhost:5001}
+    container_name: univ_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks: [univ_net]
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
+  backend_uploads:
+  ai_cache:
+  ai_data:
+
+networks:
+  univ_net:
+    driver: bridge
