@@ -281,7 +281,7 @@ function TeacherGroupsOverview({ groups, loading, error, onRetry }) {
                   <div className="flex items-center gap-1">
                     {(group.groupMembers || []).slice(0, 4).map((m, idx) => (
                       <div key={idx} className="w-7 h-7 rounded-full bg-brand/20 border-2 border-surface flex items-center justify-center text-xs font-semibold text-brand -ml-1 first:ml-0">
-                        {(m?.user?.prenom?.[0] || m?.prenom?.[0] || '?').toUpperCase()}
+                        {(m?.etudiant?.user?.prenom?.[0] || '?').toUpperCase()}
                       </div>
                     ))}
                   </div>
