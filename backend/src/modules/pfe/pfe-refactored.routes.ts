@@ -10,7 +10,6 @@ import {
 } from "./pfe-config.controller";
 import { listMyJuryHandler } from "./pfe-jury-me.controller";
 import { getMyTeacherSubjectQuotaHandler, getTeacherPromosHandler } from "./pfe-teacher.controller";
-import { composeJuryHandler } from "./pfe-jury-admin.controller";
 
 const pfeRoutes = require("./index.js");
 const { AdminPfeController } = require("./adminPfe.controller");
@@ -50,13 +49,5 @@ pfeRoutes.put("/admin/config", requireAuth, requireRole(["admin"]), updatePfeCon
 pfeRoutes.get("/jury/me", requireAuth, listMyJuryHandler);
 pfeRoutes.get("/teacher/quota", requireAuth, getMyTeacherSubjectQuotaHandler);
 pfeRoutes.get("/teacher/:enseignantId/promos", requireAuth, getTeacherPromosHandler);
-
-// ── Admin: compose the full jury for a group in one call ───────
-pfeRoutes.put(
-  "/admin/groups/:groupId/jury/compose",
-  requireAuth,
-  requireRole(["admin"]),
-  composeJuryHandler,
-);
 
 export default pfeRoutes;

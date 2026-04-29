@@ -14,6 +14,7 @@ import {
   normalizeApiError
 } from './SharedPFEUI';
 import request from '../../services/api';
+import { pfeAdminAPI } from '../../services/pfe';
 
 const TEACHER_TABS = [
   { id: 'subjects', label: 'My Subjects', Icon: BookOpen, hint: 'Your proposals' },
@@ -305,11 +306,9 @@ function DefensePanel({ teacherId }) {
     (async () => {
       setLoading(true);
       try {
-        const res = await request('/api/v1/pfe/jury');
+        const res = await pfeAdminAPI.myJuryAssignments();
         if (!alive) return;
-        // Filter jury entries where this teacher is involved
-        const filtered = (res?.data || []).filter(j => j.enseignantId === Number(teacherId));
-        setMyJuries(filtered);
+        setMyJuries(res?.data || []);
       } catch (err) {
         if (alive) setError('Failed to load defense schedule.');
       } finally {
@@ -339,11 +338,11 @@ function DefensePanel({ teacherId }) {
                     {j.role}
                   </span>
                   <h3 className="text-base font-bold text-ink mt-1">
-                    {j.groupPfe?.nom_ar || j.groupPfe?.nom_en || `Group #${j.groupId}`}
+                    {j.group?.nom_ar || j.group?.nom_en || `Group #${j.groupId}`}
                   </h3>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-ink">{j.groupPfe?.salleSoutenance || 'TBD'}</p>
+                  <p className="text-sm font-bold text-ink">{j.group?.salleSoutenance || 'TBD'}</p>
                   <p className="text-xs text-ink-tertiary">Room</p>
                 </div>
               </div>
@@ -352,7 +351,7 @@ function DefensePanel({ teacherId }) {
                 <div className="rounded-xl bg-surface-200/50 p-3">
                   <p className="text-xs font-semibold text-ink-tertiary uppercase mb-1">Subject</p>
                   <p className="text-sm font-medium text-ink line-clamp-2">
-                    {j.groupPfe?.sujetFinal?.titre_ar || j.groupPfe?.sujetFinal?.titre_en || 'N/A'}
+                    {j.group?.sujetFinal?.titre_ar || j.group?.sujetFinal?.titre_en || 'N/A'}
                   </p>
                 </div>
 
@@ -364,7 +363,7 @@ function DefensePanel({ teacherId }) {
                     <div>
                       <p className="text-[10px] font-semibold text-ink-tertiary uppercase leading-none">Date</p>
                       <p className="text-sm font-bold text-ink">
-                        {j.groupPfe?.dateSoutenance ? new Date(j.groupPfe.dateSoutenance).toLocaleDateString() : 'Unscheduled'}
+                        {j.group?.dateSoutenance ? new Date(j.group.dateSoutenance).toLocaleDateString() : 'Unscheduled'}
                       </p>
                     </div>
                   </div>
@@ -375,7 +374,7 @@ function DefensePanel({ teacherId }) {
                     <div>
                       <p className="text-[10px] font-semibold text-ink-tertiary uppercase leading-none">Time</p>
                       <p className="text-sm font-bold text-ink">
-                        {j.groupPfe?.dateSoutenance ? new Date(j.groupPfe.dateSoutenance).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                        {j.group?.dateSoutenance ? new Date(j.group.dateSoutenance).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </p>
                     </div>
                   </div>
