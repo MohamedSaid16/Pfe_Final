@@ -250,46 +250,150 @@ function TeacherSubjectsView({ subjects, loading, error, onRefresh, teacherProfi
   );
 }
 
+function GroupDetailsModal({ group, onClose }) {
+  if (!group) return null;
+  const subject = group.sujetFinal;
+  const members = group.groupMembers || [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-surface w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-edge animate-in zoom-in-95 duration-200">
+        <div className="p-6 border-b border-edge flex items-center justify-between bg-surface-200/50">
+          <div>
+            <h3 className="text-xl font-bold text-ink">{group.nom_ar || group.nom_en || `Group #${group.id}`}</h3>
+            <p className="text-sm text-ink-tertiary">Detailed group & subject overview</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-surface-300 transition-colors">
+            <XCircle className="w-6 h-6 text-ink-muted" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* Subject Details */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-brand">
+              <BookOpen className="w-5 h-5" />
+              <h4 className="font-bold uppercase tracking-wider text-xs">Project Subject</h4>
+            </div>
+            <div className="rounded-2xl border border-edge bg-surface-200/30 p-4 space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-ink-muted uppercase mb-1">Titles</p>
+                <p className="text-base font-bold text-ink leading-relaxed">{subject?.titre_ar}</p>
+                {subject?.titre_en && <p className="text-sm text-ink-secondary mt-1">{subject.titre_en}</p>}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-ink-muted uppercase mb-1">Description</p>
+                <p className="text-sm text-ink-secondary leading-relaxed whitespace-pre-wrap">
+                  {subject?.description_ar || 'No description provided.'}
+                </p>
+              </div>
+              <div className="flex gap-4 pt-2">
+                <div>
+                  <p className="text-[10px] font-bold text-ink-muted uppercase">Type</p>
+                  <span className="text-xs font-semibold text-brand capitalize">{subject?.typeProjet || 'N/A'}</span>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-ink-muted uppercase">Status</p>
+                  <StatusBadge status={subject?.status} />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Members Details */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 text-success">
+              <Users className="w-5 h-5" />
+              <h4 className="font-bold uppercase tracking-wider text-xs">Group Members ({members.length})</h4>
+            </div>
+            <div className="divide-y divide-edge border border-edge rounded-2xl overflow-hidden">
+              {members.map((m, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4 bg-surface hover:bg-surface-200/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-sm font-bold text-brand border border-brand/20">
+                      {(m?.etudiant?.user?.prenom?.[0] || '?').toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-ink">
+                        {m?.etudiant?.user?.prenom} {m?.etudiant?.user?.nom}
+                      </p>
+                      <p className="text-xs text-ink-tertiary">Student</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-mono font-bold text-ink-secondary">{m?.etudiant?.matricule || 'No Matricule'}</p>
+                    <p className="text-[10px] uppercase tracking-tighter text-ink-muted">Matricule</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="p-4 bg-surface-200/50 border-t border-edge flex justify-end">
+          <button onClick={onClose} className="px-6 py-2 rounded-xl bg-brand text-surface font-bold text-sm shadow-lg shadow-brand/20 hover:opacity-90 transition-all">
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TeacherGroupsOverview({ groups, loading, error, onRetry }) {
+  const [selectedGroup, setSelectedGroup] = React.useState(null);
   const list = Array.isArray(groups) ? groups : [];
+
   return (
     <div className="space-y-4">
       <SectionHeader eyebrow="PFE Groups" title="Groups on My Subjects" subtitle="Groups that selected one of your research topics" />
       {loading ? <SkeletonList count={2} /> : error ? <ErrorBanner error={error} onRetry={onRetry} /> : list.length === 0 ? (
         <EmptyState icon={Users} title="No groups found" hint="Groups will appear here once formed." />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {list.map((group) => {
-            const subject = group.sujetFinal;
-            const memberCount = group.groupMembers?.length || 0;
-            return (
-              <div key={group.id} className="rounded-2xl border border-edge bg-surface p-5 shadow-card hover:shadow-card-hover">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="text-sm font-semibold text-ink">{group.nom_ar || group.nom_en || `Group #${group.id}`}</h3>
-                    <p className="mt-0.5 text-xs text-ink-tertiary">{memberCount} member{memberCount !== 1 ? 's' : ''}</p>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {list.map((group) => {
+              const subject = group.sujetFinal;
+              const memberCount = group.groupMembers?.length || 0;
+              return (
+                <div
+                  key={group.id}
+                  onClick={() => setSelectedGroup(group)}
+                  className="group rounded-2xl border border-edge bg-surface p-5 shadow-card hover:shadow-card-hover hover:border-brand/40 transition-all cursor-pointer"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-ink group-hover:text-brand transition-colors">
+                        {group.nom_ar || group.nom_en || `Group #${group.id}`}
+                      </h3>
+                      <p className="mt-0.5 text-xs text-ink-tertiary">{memberCount} member{memberCount !== 1 ? 's' : ''}</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                      <span className="w-1.5 h-1.5 rounded-full bg-success" /> Active
+                    </span>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
-                    <span className="w-1.5 h-1.5 rounded-full bg-success" /> Active
-                  </span>
-                </div>
-                <div className="rounded-xl bg-surface-200/60 px-3 py-2.5 mb-3">
-                  <p className="text-xs font-medium text-ink-secondary mb-0.5">Subject</p>
-                  <p className="text-sm text-ink font-medium truncate">{subject?.titre_ar || subject?.titre_en || 'No subject assigned'}</p>
-                </div>
-                {memberCount > 0 && (
-                  <div className="flex items-center gap-1">
-                    {(group.groupMembers || []).slice(0, 4).map((m, idx) => (
-                      <div key={idx} className="w-7 h-7 rounded-full bg-brand/20 border-2 border-surface flex items-center justify-center text-xs font-semibold text-brand -ml-1 first:ml-0">
-                        {(m?.etudiant?.user?.prenom?.[0] || '?').toUpperCase()}
+                  <div className="rounded-xl bg-surface-200/60 px-3 py-2.5 mb-3 group-hover:bg-brand/5 transition-colors">
+                    <p className="text-xs font-medium text-ink-secondary mb-0.5">Subject</p>
+                    <p className="text-sm text-ink font-medium truncate">{subject?.titre_ar || subject?.titre_en || 'No subject assigned'}</p>
+                  </div>
+                  {memberCount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        {(group.groupMembers || []).slice(0, 4).map((m, idx) => (
+                          <div key={idx} className="w-7 h-7 rounded-full bg-brand/20 border-2 border-surface flex items-center justify-center text-xs font-semibold text-brand -ml-1 first:ml-0">
+                            {(m?.etudiant?.user?.prenom?.[0] || '?').toUpperCase()}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                      <span className="text-[10px] font-bold text-brand opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">Click to view details →</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <GroupDetailsModal group={selectedGroup} onClose={() => setSelectedGroup(null)} />
+        </>
       )}
     </div>
   );
