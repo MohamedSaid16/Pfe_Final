@@ -1208,19 +1208,22 @@ export default function RequestsPage({ role = 'student' }) {
 
         {/* Actions */}
         <div className="px-6 py-4 border-t border-edge-subtle flex items-center justify-between">
-          <button
-            onClick={() => setView('list')}
-            className="px-4 py-2 text-sm font-medium text-ink-secondary bg-surface border border-edge rounded-md hover:bg-surface-200 transition-colors duration-150"
-          >
-            Cancel
-          </button>
-          <div className="flex items-center gap-3">
-            <button className="px-4 py-2 text-sm font-medium text-ink-secondary bg-surface border border-edge rounded-md hover:bg-surface-200 transition-colors duration-150 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
-              </svg>
-              Save as Draft
+          {isGuest ? (
+            <button
+              onClick={resetRecForm}
+              className="px-4 py-2 text-sm font-medium text-ink-secondary bg-surface border border-edge rounded-md hover:bg-surface-200 transition-colors duration-150"
+            >
+              Clear
             </button>
+          ) : (
+            <button
+              onClick={() => setView('list')}
+              className="px-4 py-2 text-sm font-medium text-ink-secondary bg-surface border border-edge rounded-md hover:bg-surface-200 transition-colors duration-150"
+            >
+              Cancel
+            </button>
+          )}
+          <div className="flex items-center gap-3">
             <button
               onClick={submitReclamation}
               disabled={authRequired || submitLoading || !recTitle || !recType || !recDescription || !identityReady}
@@ -1399,19 +1402,22 @@ export default function RequestsPage({ role = 'student' }) {
 
         {/* Actions */}
         <div className="px-6 py-4 border-t border-edge-subtle flex items-center justify-between">
-          <button
-            onClick={() => setView('list')}
-            className="px-4 py-2 text-sm font-medium text-ink-secondary bg-surface border border-edge rounded-md hover:bg-surface-200 transition-colors duration-150"
-          >
-            Cancel
-          </button>
-          <div className="flex items-center gap-3">
-            <button className="px-4 py-2 text-sm font-medium text-ink-secondary bg-surface border border-edge rounded-md hover:bg-surface-200 transition-colors duration-150 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
-              </svg>
-              Save as Draft
+          {isGuest ? (
+            <button
+              onClick={resetJusForm}
+              className="px-4 py-2 text-sm font-medium text-ink-secondary bg-surface border border-edge rounded-md hover:bg-surface-200 transition-colors duration-150"
+            >
+              Clear
             </button>
+          ) : (
+            <button
+              onClick={() => setView('list')}
+              className="px-4 py-2 text-sm font-medium text-ink-secondary bg-surface border border-edge rounded-md hover:bg-surface-200 transition-colors duration-150"
+            >
+              Cancel
+            </button>
+          )}
+          <div className="flex items-center gap-3">
             <button
               onClick={submitJustification}
               disabled={authRequired || submitLoading || !jusTitle || !jusType || !jusDescription || !identityReady || !jusDateAbsence}

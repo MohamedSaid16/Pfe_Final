@@ -1,0 +1,29 @@
+# Root-level ignore — used when build context is the repo root.
+**/node_modules
+**/dist
+**/build
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/uploads
+**/.cache
+**/coverage
+
+.env
+.env.*
+!.env.example
+
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+*.log
+*.tsbuildinfo
+
+backup-*.sql
+backup_*.sql
+Attached files/
+docs/

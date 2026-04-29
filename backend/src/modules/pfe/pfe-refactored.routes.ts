@@ -8,6 +8,7 @@ import {
   setSubmissionFlagHandler,
   updatePfeConfigHandler,
 } from "./pfe-config.controller";
+import { composeJuryHandler } from "./pfe-jury-admin.controller";
 import { listMyJuryHandler } from "./pfe-jury-me.controller";
 import { getMyTeacherSubjectQuotaHandler, getTeacherPromosHandler } from "./pfe-teacher.controller";
 
@@ -44,6 +45,14 @@ pfeRoutes.put(
 // ── Bundled config snapshot + bulk update (admin) ──────────────
 pfeRoutes.get("/admin/config", requireAuth, requireRole(["admin"]), getPfeConfigSnapshotHandler);
 pfeRoutes.put("/admin/config", requireAuth, requireRole(["admin"]), updatePfeConfigHandler);
+
+// ── Jury composition (admin) ──────────────────────────────────
+pfeRoutes.put(
+  "/admin/groups/:groupId/jury/compose",
+  requireAuth,
+  requireRole(["admin"]),
+  composeJuryHandler
+);
 
 // ── Teacher jury view + subject quota + promos ─────────────────
 pfeRoutes.get("/jury/me", requireAuth, listMyJuryHandler);
