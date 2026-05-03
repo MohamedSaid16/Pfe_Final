@@ -253,7 +253,7 @@ const DashboardLayout = ({ children }) => {
     await logout();
     navigate('/login');
   };
-
+  const isActualitesPage = location.pathname.startsWith('/dashboard/actualites');
   /* Navigate to the clicked module path */
   const handleNavigate = (path) => {
     navigate(path);
@@ -288,7 +288,7 @@ const DashboardLayout = ({ children }) => {
         />
 
         {/* Scrollable content area */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6">
+        <main className={`flex-1 overflow-y-auto overflow-x-hidden ${isActualitesPage ? 'pt-0 px-4 pb-4 lg:pt-0 lg:px-6 lg:pb-6' : 'p-4 lg:p-6'}`}>
           <DisciplinaryAlertProvider>
             {children
               ? React.Children.map(children, (child) =>
