@@ -208,6 +208,48 @@ export const listAdminUsersHandler = async (req: AuthRequest, res: Response): Pr
   }
 };
 
+/**
+ * Lightweight typeahead search for the analytics user-picker.
+ * Reuses listUsers with a small page size; intended to be hit per keystroke
+ * from a debounced client. Returns id + name + email + role only.
+ */
+export const searchAdminUsersHandler = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const rawQuery =
+      typeof req.query.q === "string" ? req.query.q :
+      typeof req.query.search === "string" ? req.query.search : "";
+    const query = rawQuery.trim();
+
+    if (query.length < 2) {
+      // Avoid returning every user in the system on a single-character probe.
+      res.status(200).json({ success: true, data: [] });
+      return;
+    }
+
+    const result = await listUsers({
+      search: query,
+      role: typeof req.query.role === "string" ? req.query.role : undefined,
+      status: typeof req.query.status === "string" ? req.query.status : undefined,
+      page: 1,
+      limit: 20,
+    });
+
+    const slim = (result.items || []).map((user: any) => ({
+      id: user.id,
+      prenom: user.prenom,
+      nom: user.nom,
+      email: user.email,
+      roles: user.roles ?? [],
+      etudiantId: user.etudiant?.id ?? null,
+      enseignantId: user.enseignant?.id ?? null,
+    }));
+
+    res.status(200).json({ success: true, data: slim });
+  } catch (error: unknown) {
+    handleControllerError(res, error, "ADMIN_SEARCH_USERS_FAILED");
+  }
+};
+
 export const updateAdminUserRoleHandler = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = parsePositiveInt(req.params.userId);

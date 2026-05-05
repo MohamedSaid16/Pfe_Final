@@ -39,10 +39,13 @@ import RemiseCopie from './pages/RemiseCopie';
 import StudentNotesPage from './pages/StudentNotesPage';
 import StudentSpecialiteChoicePage from './pages/StudentSpecialiteChoicePage';
 import TeacherMyModulesPage from './pages/Teacher/MyModules';
+import TeacherJuryPage from './pages/Teacher/Jury';
 import StudentMyModulesPage from './pages/Student/MyModules';
 import AdminGroupsPage from './pages/admin/Groups';
 import AdminAffectationPage from './pages/admin/AdminAffectationPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
+import PfeManagementPage from './pages/admin/PfeManagementPage';
+import AdminStudentNotesPage from './pages/admin/AdminStudentNotesPage';
 import AdminUserStatsPage from './pages/admin/AdminUserStatsPage';
 import StudentHistoryPage from './pages/StudentHistoryPage';
 import TeacherHistoryPage from './pages/TeacherHistoryPage';
@@ -344,6 +347,14 @@ function App() {
                 }
               />
               <Route
+                path="/dashboard/admin/student-notes"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']} requiredPermissions={['users:manage']} accessMode="any">
+                    <DashboardLayout><AdminStudentNotesPage /></DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/dashboard/admin/analytics"
                 element={
                   <ProtectedRoute allowedRoles={['admin']} requiredPermissions={['users:manage']} accessMode="any">
@@ -381,6 +392,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/dashboard/admin/pfe-management"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <DashboardLayout><PfeManagementPage /></DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/dashboard/admin/groups" element={<ProtectedRoute><DashboardLayout><AdminGroupsPage /></DashboardLayout></ProtectedRoute>} />
               <Route
                 path="/dashboard/student/history"
@@ -395,6 +414,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['enseignant', 'teacher']}>
                     <DashboardLayout><TeacherHistoryPage /></DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/teacher/jury"
+                element={
+                  <ProtectedRoute allowedRoles={['enseignant', 'teacher']}>
+                    <DashboardLayout><TeacherJuryPage /></DashboardLayout>
                   </ProtectedRoute>
                 }
               />

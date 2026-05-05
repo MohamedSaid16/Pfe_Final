@@ -30,6 +30,7 @@ import {
   getRbacCatalogHandler,
   uploadProfilePhotoHandler,
   removeProfilePhotoHandler,
+  updateMyProfileHandler,
 } from "./auth.controller";
 import {
   loginLimiter,
@@ -78,6 +79,8 @@ router.get("/rbac/catalog", requireAuth, getRbacCatalogHandler);
 router.post("/change-password", requireAuth, changePasswordHandler);
 router.post("/profile/photo", requireAuth, upload.single("photo"), uploadProfilePhotoHandler);
 router.delete("/profile/photo", requireAuth, removeProfilePhotoHandler);
+router.patch("/me/profile", requireAuth, updateMyProfileHandler);
+router.put("/me/profile", requireAuth, updateMyProfileHandler);
 
 // ==================== ADMIN ROUTES (Using permissions) ====================
 

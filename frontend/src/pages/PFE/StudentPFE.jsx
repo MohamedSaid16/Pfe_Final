@@ -197,21 +197,29 @@ function GroupsOverviewStudent({ myGroup, loading, error, onRetry }) {
           {memberCount > 0 && (
             <div className="space-y-2 mt-4">
               <p className="text-xs font-medium text-ink-secondary mb-2">Members</p>
-              {myGroup.groupMembers.map((m, idx) => (
-                <div key={idx} className="flex items-center gap-3 bg-surface-100 p-2 rounded-lg border border-edge-subtle">
-                   <div className="w-8 h-8 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-xs font-semibold text-brand">
-                     {(m?.user?.prenom?.[0] || m?.prenom?.[0] || '?').toUpperCase()}
-                   </div>
-                   <div>
-                     <p className="text-sm font-medium text-ink">
-                       {getUserDisplayName(m?.user || m)}
-                     </p>
-                     <p className="text-xs text-ink-tertiary capitalize">
-                       {m.role === 'chef_groupe' ? 'Group Leader' : 'Member'}
-                     </p>
-                   </div>
-                </div>
-              ))}
+              {myGroup.groupMembers.map((m, idx) => {
+                // Backend payload nests user under etudiant: m.etudiant.user.
+                // Older includes flattened to m.user, and admin-created rows
+                // sometimes inline the fields on m. Try all three.
+                const memberUser = m?.etudiant?.user || m?.user || m;
+                const initial =
+                  String(memberUser?.prenom || memberUser?.nom || '?').trim().charAt(0).toUpperCase() || '?';
+                return (
+                  <div key={idx} className="flex items-center gap-3 bg-surface-100 p-2 rounded-lg border border-edge-subtle">
+                    <div className="w-8 h-8 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-xs font-semibold text-brand">
+                      {initial}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-ink">
+                        {getUserDisplayName(memberUser)}
+                      </p>
+                      <p className="text-xs text-ink-tertiary capitalize">
+                        {m.role === 'chef_groupe' ? 'Group Leader' : 'Member'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

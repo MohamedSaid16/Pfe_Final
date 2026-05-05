@@ -1,9 +1,11 @@
-import express from "express";
+import express, { Router as ExpressRouter } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import fs from "fs";
 import path from "path";
 import authRoutes from "./modules/auth/auth.routes";
+import { updateMyProfileHandler } from "./modules/auth/auth.controller";
+import { requireAuth } from "./middlewares/auth.middleware";
 import teacherDashboardRoutes from "./modules/dashboard/teacher-dashboard.routes";
 import requestRoutes from "./modules/requests/request.routes";
 import documentsRoutes from "./modules/documents/documents.routes";
@@ -90,6 +92,13 @@ app.get("/", (_req, res) => {
 app.use("/api/", globalLimiter);
 
 app.use("/api/v1/auth", authRoutes);
+
+// Path alias requested by frontend: PUT /api/v1/users/me/profile.
+// Same handler as the canonical /api/v1/auth/me/profile route.
+const usersAliasRouter = ExpressRouter();
+usersAliasRouter.put("/me/profile", requireAuth, updateMyProfileHandler);
+usersAliasRouter.patch("/me/profile", requireAuth, updateMyProfileHandler);
+app.use("/api/v1/users", usersAliasRouter);
 app.use("/api/dashboard", teacherDashboardRoutes);
 app.use("/api/v1/requests", requestRoutes);
 app.use("/api/v1/documents", documentsRoutes);

@@ -7,8 +7,8 @@
   reclamation" is a pending reclamation everywhere.
 */
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   BarChart,
   Bar,
@@ -34,6 +34,8 @@ import {
   Layers,
   Building2,
   ArrowRight,
+  Search,
+  Loader2,
 } from 'lucide-react';
 import { adminPanelAPI, academicAPI } from '../../services/api';
 
@@ -172,6 +174,133 @@ function UserListCard({ title, icon: Icon, users, loading, emptyMessage }) {
             );
           })}
         </ul>
+      )}
+    </div>
+  );
+}
+
+function UserSearchPicker() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [error, setError] = useState('');
+  const containerRef = useRef(null);
+  const navigate = useNavigate();
+
+  // Debounced fetch — fires 300ms after the last keystroke. Single-character
+  // queries are intentionally ignored on the server (returns []) to prevent
+  // pulling the entire user table.
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setResults([]);
+      setSearching(false);
+      setError('');
+      return undefined;
+    }
+
+    let cancelled = false;
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await adminPanelAPI.searchUsers(trimmed);
+        if (cancelled) return;
+        setResults(Array.isArray(res?.data) ? res.data : []);
+        setError('');
+      } catch (err) {
+        if (!cancelled) {
+          setResults([]);
+          setError(err?.message || 'Search failed.');
+        }
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 300);
+
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query]);
+
+  // Close dropdown on outside click.
+  useEffect(() => {
+    const handler = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = (user) => {
+    setOpen(false);
+    setQuery('');
+    setResults([]);
+    navigate(`/dashboard/admin/user/${user.id}`);
+  };
+
+  const trimmed = query.trim();
+  const showDropdown = open && trimmed.length >= 2;
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-tertiary pointer-events-none" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search a user by name or email…"
+          aria-label="Search users"
+          className="w-full rounded-lg border border-edge bg-surface pl-9 pr-9 py-2.5 text-sm text-ink placeholder:text-ink-muted outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30"
+        />
+        {searching && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-tertiary animate-spin" />
+        )}
+      </div>
+
+      {showDropdown && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg border border-edge bg-surface shadow-lg max-h-80 overflow-y-auto">
+          {error ? (
+            <p className="px-4 py-3 text-sm text-danger">{error}</p>
+          ) : searching && results.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-ink-tertiary">Searching…</p>
+          ) : results.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-ink-tertiary">No matches for “{trimmed}”.</p>
+          ) : (
+            <ul className="divide-y divide-edge-subtle">
+              {results.map((user) => {
+                const fullName = `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email || `User #${user.id}`;
+                const primaryRole = Array.isArray(user.roles) && user.roles.length > 0
+                  ? String(user.roles[0]).replace(/_/g, ' ')
+                  : '';
+                return (
+                  <li key={user.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(user)}
+                      className="group w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-brand/5 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-ink truncate">{fullName}</p>
+                        <p className="text-xs text-ink-tertiary truncate">
+                          {user.email}
+                          {primaryRole && (
+                            <span className="ml-2 inline-flex items-center rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand">
+                              {primaryRole}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-ink-tertiary shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-brand" strokeWidth={2} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );
@@ -888,8 +1017,14 @@ export default function AdminAnalyticsPage() {
       <section>
         <SectionHeader
           title="Inspect a user"
-          description="Click any name to view their dashboard exactly as they see it (read-only)."
+          description="Search a user, then open their dashboard exactly as they see it (read-only)."
         />
+        <div className="mb-4 max-w-2xl">
+          <UserSearchPicker />
+          <p className="mt-2 text-xs text-ink-tertiary">
+            Type at least 2 characters. Pick a user to load their analytics.
+          </p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <UserListCard
             title="Students"

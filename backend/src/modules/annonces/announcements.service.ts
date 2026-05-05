@@ -60,6 +60,9 @@ export interface CreateAnnounceInput {
   dateExpiration?: Date;
   filePath?: string;
   fileType?: string;
+  /** Visibility audience. Accepts canonical (tous/etudiants/enseignants/administration)
+   *  or English UI tokens (ALL/STUDENTS/TEACHERS/ADMIN). Defaults to "tous". */
+  cible?: string;
 }
 
 export interface UpdateAnnounceInput {
@@ -70,7 +73,19 @@ export interface UpdateAnnounceInput {
   typeId?: number;
   dateExpiration?: Date;
   removedDocumentIds?: number[];
+  cible?: string;
 }
+
+const normalizeCible = (value?: string | null): CibleAnnonce | undefined => {
+  if (!value) return undefined;
+  const v = String(value).trim().toLowerCase();
+  if (!v) return undefined;
+  if (v === "all" || v === "tous") return CibleAnnonce.tous;
+  if (v === "students" || v === "etudiants" || v === "etudiant") return CibleAnnonce.etudiants;
+  if (v === "teachers" || v === "enseignants" || v === "enseignant") return CibleAnnonce.enseignants;
+  if (v === "admin" || v === "administration") return CibleAnnonce.administration;
+  return undefined;
+};
 
 const resolveTypeId = async (
   input: Pick<CreateAnnounceInput, "typeAnnonce" | "typeId">
@@ -124,6 +139,7 @@ export const createAnnounce = async (
         contenu_ar: input.contenu,
         contenu_en: input.contenu,
         priorite: normalizeAnnouncementPriority(input.priority),
+        cible: normalizeCible(input.cible) ?? CibleAnnonce.tous,
         auteurId: auteurId,
         typeId,
         datePublication: new Date(),
@@ -241,12 +257,29 @@ const fanoutAnnouncementAlerts = async (
   }
 };
 
+/** Audience scope for the announcement list. "guest" sees `tous` only. */
+export type AnnounceAudience = "guest" | "student" | "teacher" | "admin";
+
+const audienceCibleFilter = (audience?: AnnounceAudience): CibleAnnonce[] | null => {
+  if (!audience || audience === "guest") return [CibleAnnonce.tous];
+  if (audience === "student") return [CibleAnnonce.tous, CibleAnnonce.etudiants];
+  if (audience === "teacher") return [CibleAnnonce.tous, CibleAnnonce.enseignants];
+  // admin sees everything (no cible filter)
+  return null;
+};
+
 export const getAnnounces = async (filters?: {
   typeAnnonce?: string;
   isExpired?: boolean;
+  audience?: AnnounceAudience;
 }) => {
   try {
     const where: Prisma.AnnonceWhereInput = {};
+
+    const cibleScope = audienceCibleFilter(filters?.audience);
+    if (cibleScope) {
+      where.cible = { in: cibleScope };
+    }
 
     if (filters?.typeAnnonce?.trim()) {
       where.type = {
@@ -331,6 +364,7 @@ export const updateAnnounce = async (
           priorite: input.priority
             ? normalizeAnnouncementPriority(input.priority)
             : undefined,
+          cible: normalizeCible(input.cible),
           typeId: typeId ?? undefined,
           dateExpiration: input.dateExpiration,
         },

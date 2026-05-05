@@ -148,6 +148,7 @@ export default function JuryManagement({ groups, teachers, promos = [], onSaved 
     if (!presidentId) nextErrors.president = 'President is required.';
     if (memberIds.length === 0) nextErrors.members = 'Select at least one member.';
     if (!date || !time) nextErrors.date = 'Date and time are required.';
+    if (!room || !room.trim()) nextErrors.room = 'Defense room is required.';
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;

@@ -39,14 +39,36 @@ const VOEU_STATUS_META = {
 const inputClass =
   'w-full rounded-md border border-control-border bg-control-bg px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30';
 
+// Read the active UI language. Defaults to 'fr' to match the app's default
+// document direction in App.jsx.
+function activeLang() {
+  if (typeof document !== 'undefined') {
+    const docLang = String(document.documentElement.lang || '').slice(0, 2).toLowerCase();
+    if (docLang) return docLang;
+  }
+  return 'fr';
+}
+
+// Pick the language-appropriate label without ever falling back to "#id".
+// The backend now ships nom_ar / nom_en explicitly; if both are empty we
+// surface a human-readable placeholder instead of leaking an internal id.
+function localizedNameOf(entity, fallback) {
+  if (!entity) return '—';
+  const lang = activeLang();
+  const primary = lang === 'ar' ? entity.nom_ar : entity.nom_en;
+  const secondary = lang === 'ar' ? entity.nom_en : entity.nom_ar;
+  const name = primary || secondary || entity.nom;
+  return name || fallback;
+}
+
 function specialiteLabel(specialite) {
   if (!specialite) return '—';
-  return specialite.nom_en || specialite.nom_ar || `Specialite #${specialite.id}`;
+  return localizedNameOf(specialite, 'Unnamed Specialite');
 }
 
 function campaignLabel(c) {
   if (!c) return '—';
-  return c.nom_en || c.nom_ar || `Campaign #${c.id}`;
+  return localizedNameOf(c, 'Unnamed Campaign');
 }
 
 function hasAdminRole(roles) {
@@ -375,7 +397,7 @@ function LinkSpecialiteForm({ campaignId, existingSpecialiteIds, allSpecialites,
         <option value="">Select specialite…</option>
         {available.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.nom_en || s.nom_ar || `#${s.id}`}
+            {specialiteLabel(s)}
           </option>
         ))}
       </select>

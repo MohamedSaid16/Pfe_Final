@@ -1289,7 +1289,15 @@ export default function News() {
     typeAnnonce: 'Administrative',
     priority: 'normal',
     target: 'tous',
+    cible: 'tous',
   });
+
+  const VISIBILITY_OPTIONS = [
+    { value: 'tous', label: 'Everyone (public)' },
+    { value: 'etudiants', label: 'Students only' },
+    { value: 'enseignants', label: 'Teachers only' },
+    { value: 'administration', label: 'Administration only' },
+  ];
 
   useEffect(() => {
     injectNewsStyles();
@@ -1349,6 +1357,7 @@ export default function News() {
       typeAnnonce: 'Administrative',
       priority: 'normal',
       target: 'tous',
+    cible: 'tous',
     });
   };
 
@@ -1367,6 +1376,11 @@ export default function News() {
       payload.append('typeAnnonce', formData.typeAnnonce);
       payload.append('priority', formData.priority);
       payload.append('target', formData.target);
+payload.append('contenu', formData.contenu);
+payload.append('typeAnnonce', formData.typeAnnonce);
+payload.append('priority', formData.priority);
+payload.append('cible', formData.cible || 'tous');
+      payload.append('cible', formData.cible || formData.target || 'tous');
 
       selectedFiles.forEach((file) => {
         payload.append('files', file);
@@ -1420,6 +1434,7 @@ export default function News() {
       typeAnnonce: getCategoryName(item),
       priority: normalizePriority(item) || 'normal',
       target: item?.cible || item?.target || 'tous',
+      cible: item?.cible || item?.target || 'tous',
     });
     setShowModal(true);
   };
@@ -1796,6 +1811,26 @@ export default function News() {
                   <option value="administration">Administration</option>
                 </select>
                 <p className="mt-1 text-xs text-ink-tertiary">Select the audience for this announcement.</p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-secondary">
+                  Visibility <span className="text-danger">*</span>
+                </label>
+                <select
+                  className={inputClassName}
+                  value={formData.cible || 'tous'}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, cible: event.target.value }))}
+                >
+                  {VISIBILITY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-ink-tertiary">
+                  Restrict who sees this announcement. "Everyone" is the default and is visible on the public landing.
+                </p>
               </div>
 
               <div className="flex flex-col gap-3 border-t border-edge-subtle pt-5 sm:flex-row sm:justify-end">

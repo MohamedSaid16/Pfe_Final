@@ -19,11 +19,38 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { Users, BookOpen, Layers, GraduationCap, FileText, ShieldAlert, Activity, Gavel, Sparkles, HelpCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import ProfileHeader from '../../components/dashboard/teacher/ProfileHeader';
 import ReportStudentModal from '../../components/dashboard/teacher/ReportStudentModal';
 import { teacherDashboardService } from '../../services/teacherDashboard';
 import { academicAPI } from '../../services/api';
+import { TeacherJurySection } from './Jury';
+import { KpiCard, EmptyState, Walkthrough } from '../../design-system/components';
+import useFirstTimeTour from '../../hooks/useFirstTimeTour';
+
+const TEACHER_TOUR_STEPS = [
+  {
+    Icon: Sparkles,
+    title: 'Your teaching home',
+    body: 'PFE supervision, jury duty, and teaching assignments all in one place — read-only, sourced from the same data the admin sees.',
+  },
+  {
+    Icon: BookOpen,
+    title: 'PFE tab',
+    body: 'Every subject you propose and every group under your supervision, with student counts and project status.',
+  },
+  {
+    Icon: Gavel,
+    title: 'Jury tab',
+    body: 'Defense panels you have been assigned to, including your role, the date, and the room. Selection is admin-controlled — you cannot pick groups yourself.',
+  },
+  {
+    Icon: Layers,
+    title: 'Teaching tab',
+    body: 'Modules and promos you teach. Filter by academic year. Default is the active year.',
+  },
+];
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -101,6 +128,11 @@ function StudentListModal({ isOpen, onClose, title, students, onReport }) {
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const tour = useFirstTimeTour({
+    userId: user?.id,
+    tourId: 'teacher-dashboard-v1',
+    ready: Boolean(user?.id),
+  });
 
   const [overview, setOverview] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
@@ -230,12 +262,6 @@ export default function TeacherDashboard() {
     };
   }, [pfeBreakdown, summary]);
 
-  // ── Jury tab — no NEW endpoint ────────────────────────────────────────
-  const juryData = useMemo(() => ({
-    summary: { totalThemes: 0 },
-    themes: [],
-  }), []);
-
   // ── Teaching tab — derived from teachingItems ─────────────────────────
   const teachingDerived = useMemo(() => {
     const grouped = new Map();
@@ -291,9 +317,9 @@ export default function TeacherDashboard() {
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <KpiCard label="Supervised Students" value={summary?.supervisedStudents ?? 0} accent="brand" />
-          <KpiCard label="PFE Groups" value={summary?.pfeGroups ?? 0} accent="success" />
-          <KpiCard label="PFE Projects" value={summary?.pfeProjects ?? 0} accent="warning" />
+          <KpiCard label="Supervised Students" value={summary?.supervisedStudents ?? 0} Icon={GraduationCap} tone="brand" tooltip="Students you supervise across active PFE groups" />
+          <KpiCard label="PFE Groups" value={summary?.pfeGroups ?? 0} Icon={Users} tone="success" tooltip="Active groups under your supervision" />
+          <KpiCard label="PFE Projects" value={summary?.pfeProjects ?? 0} Icon={BookOpen} tone="warning" tooltip="Subjects you've proposed or co-supervise" />
         </div>
 
         {/* Charts grid */}
@@ -309,10 +335,10 @@ export default function TeacherDashboard() {
   const renderPfe = () => (
     <div className="mt-6 space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="My PFE Projects" value={pfeData.stats.totalThemes} accent="brand" />
-        <KpiCard label="My PFE Groups" value={pfeData.stats.totalGroups} accent="success" />
-        <KpiCard label="Supervised Students" value={pfeData.stats.totalStudents} accent="warning" />
-        <KpiCard label="Avg Group Size" value={pfeData.stats.averageGroupSize} accent="brand" />
+        <KpiCard label="My PFE Projects" value={pfeData.stats.totalThemes} Icon={BookOpen} tone="brand" />
+        <KpiCard label="My PFE Groups" value={pfeData.stats.totalGroups} Icon={Users} tone="success" />
+        <KpiCard label="Supervised Students" value={pfeData.stats.totalStudents} Icon={GraduationCap} tone="warning" />
+        <KpiCard label="Avg Group Size" value={pfeData.stats.averageGroupSize} Icon={Activity} tone="ink" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -365,63 +391,8 @@ export default function TeacherDashboard() {
   );
 
   const renderJury = () => (
-    <div className="mt-6 space-y-6">
-      <div className="bg-surface rounded-lg border border-edge shadow-card p-6 inline-flex flex-col">
-        <span className="text-sm text-ink-secondary uppercase font-semibold tracking-wider">
-          Total Jury Themes
-        </span>
-        <span className="text-3xl font-bold text-brand mt-2">{juryData.summary.totalThemes}</span>
-      </div>
-
-      <div className="bg-surface rounded-lg border border-edge shadow-card overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-edge/20 text-ink-secondary text-sm">
-            <tr>
-              <th className="p-4 border-b border-edge font-medium">Theme</th>
-              <th className="p-4 border-b border-edge font-medium">Roles</th>
-              <th className="p-4 border-b border-edge font-medium">Date</th>
-              <th className="p-4 border-b border-edge font-medium">Salle</th>
-              <th className="p-4 border-b border-edge font-medium">Students</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm">
-            {juryData.themes.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="p-8 text-center text-ink-tertiary">
-                  No jury themes found.
-                </td>
-              </tr>
-            ) : (
-              juryData.themes.map((theme) => (
-                <tr key={theme.id} className="hover:bg-edge/10">
-                  <td className="p-4 border-b border-edge font-medium">{theme.title}</td>
-                  <td className="p-4 border-b border-edge">
-                    <div className="flex gap-2 flex-wrap">
-                      {(theme.roles || []).map((r) => (
-                        <span
-                          key={r}
-                          className="px-2 py-1 bg-brand/10 text-brand text-xs rounded-md font-semibold"
-                        >
-                          {r}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="p-4 border-b border-edge">
-                    {theme.date ? new Date(theme.date).toLocaleDateString() : 'TBD'}
-                  </td>
-                  <td className="p-4 border-b border-edge">{theme.salle || 'TBD'}</td>
-                  <td className="p-4 border-b border-edge">
-                    {(theme.students || []).map((s) => (
-                      <div key={s}>{s}</div>
-                    ))}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+    <div className="mt-6">
+      <TeacherJurySection />
     </div>
   );
 
@@ -451,9 +422,9 @@ export default function TeacherDashboard() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <KpiCard label="Total Assignments" value={teachingDerived.stats.total} accent="brand" />
-        <KpiCard label="Distinct Modules" value={teachingDerived.stats.modules} accent="success" />
-        <KpiCard label="Distinct Promos" value={teachingDerived.stats.promos} accent="warning" />
+        <KpiCard label="Total Assignments" value={teachingDerived.stats.total} Icon={Activity} tone="brand" />
+        <KpiCard label="Distinct Modules" value={teachingDerived.stats.modules} Icon={Layers} tone="success" />
+        <KpiCard label="Distinct Promos" value={teachingDerived.stats.promos} Icon={GraduationCap} tone="warning" />
       </div>
 
       {/* Type distribution bar chart */}
@@ -521,16 +492,32 @@ export default function TeacherDashboard() {
     <div className="space-y-6 pb-12">
       <ProfileHeader profile={user} />
 
-      {hasPresidentMembership && (
-        <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={tour.replay}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:text-brand-hover"
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+          Replay tour
+        </button>
+        {hasPresidentMembership && (
           <button
             onClick={() => navigate('/dashboard/discipline/president')}
             className="px-4 py-2 text-sm font-medium text-surface bg-brand rounded-md hover:bg-brand-hover transition-colors"
           >
             Open Decision Panel
           </button>
-        </div>
-      )}
+        )}
+      </div>
+
+      <Walkthrough
+        open={tour.open}
+        title="Teacher Dashboard · Tour"
+        steps={TEACHER_TOUR_STEPS}
+        onClose={tour.dismiss}
+        onFinish={tour.markSeen}
+      />
 
       {error && (
         <div className="bg-danger/10 border border-danger/30 text-danger text-sm px-4 py-3 rounded-md">
@@ -602,23 +589,6 @@ export default function TeacherDashboard() {
     </div>
   );
 }
-
-function KpiCard({ label, value, accent = 'brand' }) {
-  const tones = {
-    brand:   { bg: 'bg-brand/10',   text: 'text-brand' },
-    success: { bg: 'bg-success/10', text: 'text-success' },
-    warning: { bg: 'bg-warning/10', text: 'text-warning' },
-    danger:  { bg: 'bg-danger/10',  text: 'text-danger' },
-  };
-  const tone = tones[accent] || tones.brand;
-  return (
-    <div className={`${tone.bg} rounded-xl border border-edge p-4 flex flex-col gap-1`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-tertiary">{label}</p>
-      <p className={`text-3xl font-bold tabular-nums ${tone.text}`}>{value}</p>
-    </div>
-  );
-}
-
 
 function ChartCard({ title, data, variant, color, palette, offset = 0 }) {
   const isEmpty = !Array.isArray(data) || data.length === 0 || data.every((d) => !d.value);

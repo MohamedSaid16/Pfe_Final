@@ -14,10 +14,16 @@ import {
   listAdminDocumentsHandler,
   listAdminReclamationsHandler,
   listAdminUsersHandler,
+  searchAdminUsersHandler,
   updateAdminAnnouncementHandler,
   updateAdminReclamationHandler,
   updateAdminUserRoleHandler,
 } from "./admin.controller";
+import {
+  importStudentNotesHandler,
+  listStudentNotesHandler,
+  updateStudentNoteHandler,
+} from "./student-notes.controller";
 import { listAdminAuditLogsHandler } from "./audit.controller";
 import { requireAnyPermission, requireAuth, requireRole } from "../../middlewares/auth.middleware";
 import {
@@ -59,6 +65,21 @@ router.get("/user/:id/stats", requireAnyPermission(["users:manage"]), getAdminUs
 router.get("/audit-logs", requireAnyPermission(["users:manage", "reclamations:manage:global"]), listAdminAuditLogsHandler);
 
 router.get("/users", requireAnyPermission(["users:manage"]), listAdminUsersHandler);
+router.get("/users/search", requireAnyPermission(["users:manage"]), searchAdminUsersHandler);
+
+// ── Student notes (academic moyenne) management ──────────────
+const studentNotesCsvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+router.get("/students/notes", requireAnyPermission(["users:manage"]), listStudentNotesHandler);
+router.put("/students/:etudiantId/note", requireAnyPermission(["users:manage"]), updateStudentNoteHandler);
+router.post(
+  "/students/import-notes",
+  requireAnyPermission(["users:manage"]),
+  studentNotesCsvUpload.single("file"),
+  importStudentNotesHandler,
+);
 router.get("/users/:userId/history", requireAnyPermission(["users:manage"]), getUniversalHistoryHandler);
 router.patch("/users/:userId/role", requireAnyPermission(["users:manage", "roles:assign"]), updateAdminUserRoleHandler);
 router.delete("/users/:userId", requireAnyPermission(["users:manage"]), deleteAdminUserHandler);

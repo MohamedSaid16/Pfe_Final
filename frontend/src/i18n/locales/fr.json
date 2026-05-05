@@ -31,7 +31,8 @@
     "academicStructure": "Structure académique",
     "academicAssignments": "Affectations académiques",
     "siteConfiguration": "Configuration du site",
-    "affectationCampaigns": "Campagnes d'affectation"
+    "affectationCampaigns": "Campagnes d'affectation",
+    "studentNotes": "Notes des étudiants"
   },
   "sections": {
     "academic": "Académique",

@@ -183,27 +183,23 @@ export default function GroupBulkCreate({
       const subjectLabel = buildSubjectLabel(selectedSubject);
       const fallbackName = `${subjectLabel} - Group`;
       const teacherFallback = selectedSubject?.enseignant?.id;
+      // Atomic: one backend call creates the group AND all members in a single
+      // transaction. Avoids partial-state failures when one of N member adds
+      // would have failed under the old loop.
       const payload = {
         nom_ar: groupName.trim() || fallbackName,
         nom_en: groupName.trim() || fallbackName,
         sujetFinalId: Number(selectedSubject.id),
         coEncadrantId: coEncadrantId ? Number(coEncadrantId) : teacherFallback,
-      };
-
-      const created = await pfeAdminAPI.createGroup(payload);
-      const groupId = created?.data?.id || created?.data?.group?.id;
-      if (!groupId) {
-        throw new Error('Group creation failed.');
-      }
-
-      for (const studentId of selectedStudents) {
-        await pfeAdminAPI.addGroupMember(groupId, {
+        members: selectedStudents.map((studentId) => ({
           etudiantId: Number(studentId),
           role: String(studentId) === String(leader) ? 'chef_groupe' : 'membre',
-        });
-      }
+        })),
+      };
 
-      setToast(buildToast('success', 'Group created successfully.'));
+      await pfeAdminAPI.createGroupManual(payload);
+
+      setToast(buildToast('success', `Group created with ${selectedStudents.length} member(s).`));
       setSelectedStudents([]);
       setGroupName('');
       setCoEncadrantId('');

@@ -624,6 +624,14 @@ const resolveJustificationTypeId = async (typeIdRaw: unknown, typeNameRaw: unkno
 //  RECLAMATIONS
 // ════════════════════════════════════════════════════════════
 
+/**
+ * Per-student lifetime cap on reclamations. Exposed as a constant (rather
+ * than a config row) because changing it should be a code review event —
+ * if it ever becomes admin-tunable, move it to PfeConfig or a dedicated
+ * table. Keep in sync with MAX_STUDENT_RECLAMATIONS on the frontend.
+ */
+export const MAX_STUDENT_RECLAMATIONS = 15;
+
 // POST /api/v1/requests/reclamations
 export const createReclamation = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -634,6 +642,23 @@ export const createReclamation = async (req: AuthRequest, res: Response): Promis
 
     // ── PATH 1: Authenticated student ───────────────────────────
     if (etudiantId) {
+      // Enforce the per-student cap. Counted across all statuses (terminal
+      // or otherwise) — the rule is "max 15 reclamations ever submitted".
+      // Admins are not subject to this limit because the path that gets
+      // here only runs when the caller has an Etudiant record.
+      const existingCount = await prisma.reclamation.count({ where: { etudiantId } });
+      if (existingCount >= MAX_STUDENT_RECLAMATIONS) {
+        res.status(429).json({
+          success: false,
+          error: {
+            code: "RECLAMATION_LIMIT_REACHED",
+            message: `You have reached the maximum number of reclamations (${MAX_STUDENT_RECLAMATIONS}). Please contact the administration if you need to file another.`,
+          },
+          data: { used: existingCount, limit: MAX_STUDENT_RECLAMATIONS },
+        });
+        return;
+      }
+
       const { typeId, typeName, objet, description, priorite } = req.body;
       const resolvedTypeId = await resolveReclamationTypeId(typeId, typeName);
 
@@ -773,6 +798,56 @@ export const createReclamation = async (req: AuthRequest, res: Response): Promis
 };
 
 // GET /api/v1/requests/reclamations
+/**
+ * GET /api/v1/requests/reclamations/quota
+ *
+ * Returns the calling student's reclamation usage and limit. The frontend
+ * uses this to disable the "Submit" button + show a "limit reached" notice
+ * BEFORE the user fills out the form.
+ *
+ * Non-students get { used: 0, limit, canSubmit: false } so the UI degrades
+ * gracefully — admins viewing this endpoint won't see a misleading "you're
+ * at 0/15" tooltip on a screen they shouldn't be using anyway.
+ */
+export const getReclamationQuotaHandler = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const etudiantId = await getEtudiantId(userId);
+
+    if (!etudiantId) {
+      res.status(200).json({
+        success: true,
+        data: {
+          used: 0,
+          limit: MAX_STUDENT_RECLAMATIONS,
+          remaining: MAX_STUDENT_RECLAMATIONS,
+          canSubmit: false,
+          reason: "Not a student account",
+        },
+      });
+      return;
+    }
+
+    const used = await prisma.reclamation.count({ where: { etudiantId } });
+    const remaining = Math.max(0, MAX_STUDENT_RECLAMATIONS - used);
+    res.status(200).json({
+      success: true,
+      data: {
+        used,
+        limit: MAX_STUDENT_RECLAMATIONS,
+        remaining,
+        canSubmit: remaining > 0,
+      },
+    });
+  } catch (error) {
+    console.error("getReclamationQuotaHandler error:", error);
+    res.status(500).json({
+      success: false,
+      error: { code: "QUOTA_FETCH_FAILED", message: "Failed to load reclamation quota" },
+    });
+  }
+};
+
 export const getMyReclamations = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;

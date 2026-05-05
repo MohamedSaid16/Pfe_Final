@@ -417,6 +417,22 @@ export default function RequestsPage({ role = 'student' }) {
   const [justifications, setJustifications] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
 
+  // Reclamation quota — only relevant for authenticated students. Starts as
+  // null so the UI doesn't flash "limit reached" before the first fetch.
+  const [reclamationQuota, setReclamationQuota] = useState(null);
+  const refreshReclamationQuota = React.useCallback(async () => {
+    if (isGuest || !hasStudentRole) return;
+    try {
+      const res = await request('/api/v1/requests/reclamations/quota');
+      if (res?.data) setReclamationQuota(res.data);
+    } catch {
+      // quota is decorative on top of a hard backend cap — failing to load it
+      // shouldn't block the form. The server will still reject submissions
+      // beyond the limit with a 429 + RECLAMATION_LIMIT_REACHED.
+    }
+  }, [isGuest, hasStudentRole]);
+  useEffect(() => { refreshReclamationQuota(); }, [refreshReclamationQuota]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -586,10 +602,18 @@ export default function RequestsPage({ role = 'student' }) {
       resetRecForm();
       setView('list');
       setActiveCategory('reclamations');
+      refreshReclamationQuota();
     } catch (error) {
       if (!isGuest && error?.status === 401) {
         alert('Session expired or not logged in. Please sign in again.');
         window.location.href = '/login';
+        return;
+      }
+      // Backend cap reached. Refresh the quota so the button stays disabled
+      // even if the user tries to retry without reloading the page.
+      if (error?.status === 429 || error?.code === 'RECLAMATION_LIMIT_REACHED') {
+        refreshReclamationQuota();
+        alert(error?.message || 'You have reached the maximum number of reclamations.');
         return;
       }
       alert(error?.message || 'Failed to submit reclamation.');
@@ -663,22 +687,18 @@ export default function RequestsPage({ role = 'student' }) {
      GUEST VIEW — Can submit forms, cannot see history/stats
      ═════════════════════════════════════════════════════════════ */
   if (isGuest) {
-    const guestFormType = view === 'new-justification' ? 'justification' : 'reclamation';
+    // Guests can submit reclamations only. Absence justifications require an
+    // authenticated student record (date_absence, motif, attached medical proof
+    // tied to an etudiantId), so they are not exposed to the public form.
     return (
       <div className="space-y-6 min-w-0">
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-ink tracking-tight">Submit a Request</h1>
+          <h1 className="text-xl font-bold text-ink tracking-tight">Submit a Reclamation</h1>
           <p className="mt-1 text-sm text-ink-tertiary">
-            Submit a reclamation or absence justification. No account required.
+            File a reclamation. No account required — we will reply to the email you provide.
           </p>
         </div>
-
-        {authRequired && (
-          <div className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
-            You are not authenticated. Please sign in to submit or view requests.
-          </div>
-        )}
 
         {/* Info banner */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-edge-strong bg-brand-light px-5 py-4">
@@ -690,44 +710,16 @@ export default function RequestsPage({ role = 'student' }) {
             </div>
             <div>
               <p className="text-sm font-medium text-ink">Want to track your requests?</p>
-              <p className="text-xs text-ink-tertiary">Sign in to view submission history and receive status updates.</p>
+              <p className="text-xs text-ink-tertiary">
+                Sign in to view submission history, file absence justifications, and receive status updates.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Form type toggle */}
-        <div className="flex items-center gap-1 p-1 bg-surface-200 rounded-lg w-fit">
-          <button
-            onClick={() => { setView('new-reclamation'); resetRecForm(); }}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-150 flex items-center gap-2 ${
-              guestFormType === 'reclamation'
-                ? 'bg-surface text-ink shadow-sm'
-                : 'text-ink-secondary hover:text-ink'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-            </svg>
-            Reclamation
-          </button>
-          <button
-            onClick={() => { setView('new-justification'); resetJusForm(); }}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-150 flex items-center gap-2 ${
-              guestFormType === 'justification'
-                ? 'bg-surface text-ink shadow-sm'
-                : 'text-ink-secondary hover:text-ink'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
-            </svg>
-            Justification
-          </button>
-        </div>
-
-        {/* The form */}
+        {/* The form — reclamation only */}
         <div className="max-w-2xl">
-          {guestFormType === 'reclamation' ? renderReclamationForm() : renderJustificationForm()}
+          {renderReclamationForm()}
         </div>
       </div>
     );
@@ -958,7 +950,9 @@ export default function RequestsPage({ role = 'student' }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setView('new-reclamation'); resetRecForm(); }}
-            className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-hover active:bg-brand-dark transition-all duration-150 flex items-center gap-2 shadow-sm"
+            disabled={Boolean(reclamationQuota && !reclamationQuota.canSubmit)}
+            title={reclamationQuota && !reclamationQuota.canSubmit ? `Maximum reclamations reached (${reclamationQuota.limit})` : undefined}
+            className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-hover active:bg-brand-dark transition-all duration-150 flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -976,6 +970,28 @@ export default function RequestsPage({ role = 'student' }) {
           </button>
         </div>
       </div>
+
+      {reclamationQuota && (
+        <div
+          className={`rounded-md border px-4 py-3 text-sm ${
+            reclamationQuota.canSubmit
+              ? 'border-edge bg-surface text-ink-secondary'
+              : 'border-danger/30 bg-danger/10 text-danger'
+          }`}
+          role="status"
+        >
+          {reclamationQuota.canSubmit ? (
+            <>
+              You've used <strong>{reclamationQuota.used}</strong> of <strong>{reclamationQuota.limit}</strong> reclamations.
+              {reclamationQuota.remaining <= 3 && (
+                <> Only <strong>{reclamationQuota.remaining}</strong> remaining.</>
+              )}
+            </>
+          ) : (
+            <>You have reached the maximum number of reclamations ({reclamationQuota.limit}). Please contact the administration if you need to file another.</>
+          )}
+        </div>
+      )}
 
       {/* ── Category Tabs ─────────────────────────────────────── */}
       <div className="flex items-center gap-1 p-1 bg-surface-200 rounded-lg w-fit">
@@ -1224,9 +1240,22 @@ export default function RequestsPage({ role = 'student' }) {
             </button>
           )}
           <div className="flex items-center gap-3">
+            {!isGuest && reclamationQuota && !reclamationQuota.canSubmit && (
+              <span className="text-xs font-medium text-danger">
+                Limit reached ({reclamationQuota.used}/{reclamationQuota.limit})
+              </span>
+            )}
             <button
               onClick={submitReclamation}
-              disabled={authRequired || submitLoading || !recTitle || !recType || !recDescription || !identityReady}
+              disabled={
+                authRequired
+                || submitLoading
+                || !recTitle
+                || !recType
+                || !recDescription
+                || !identityReady
+                || (!isGuest && reclamationQuota && !reclamationQuota.canSubmit)
+              }
               className="px-4 py-2.5 text-sm font-medium text-white bg-brand rounded-md hover:bg-brand-hover active:bg-brand-dark transition-all duration-150 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
