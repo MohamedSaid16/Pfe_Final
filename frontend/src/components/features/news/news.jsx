@@ -940,7 +940,15 @@ export default function News() {
     contenu: '',
     typeAnnonce: 'Administrative',
     priority: 'normal',
+    cible: 'tous',
   });
+
+  const VISIBILITY_OPTIONS = [
+    { value: 'tous', label: 'Everyone (public)' },
+    { value: 'etudiants', label: 'Students only' },
+    { value: 'enseignants', label: 'Teachers only' },
+    { value: 'administration', label: 'Administration only' },
+  ];
 
   const fetchAnnonces = async () => {
     try {
@@ -973,6 +981,7 @@ export default function News() {
     contenu: '',
     typeAnnonce: 'Administrative',
     priority: 'normal',
+    cible: 'tous',
   });
 };
 
@@ -990,6 +999,7 @@ payload.append('titre', formData.titre);
 payload.append('contenu', formData.contenu);
 payload.append('typeAnnonce', formData.typeAnnonce);
 payload.append('priority', formData.priority);
+payload.append('cible', formData.cible || 'tous');
 
 selectedFiles.forEach((file) => {
   payload.append('files', file);
@@ -1042,6 +1052,7 @@ if (editingAnnonce) {
       contenu: getContent(item),
       typeAnnonce: getCategoryName(item),
       priority: normalizePriority(item) || 'normal',
+      cible: item?.cible || 'tous',
     });
     setShowModal(true);
   };
@@ -1702,6 +1713,26 @@ if (editingAnnonce) {
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-ink-tertiary">Important and urgent items are featured prominently.</p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-secondary">
+                  Visibility <span className="text-danger">*</span>
+                </label>
+                <select
+                  className={inputClassName}
+                  value={formData.cible || 'tous'}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, cible: event.target.value }))}
+                >
+                  {VISIBILITY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-ink-tertiary">
+                  Restrict who sees this announcement. "Everyone" is the default and is visible on the public landing.
+                </p>
               </div>
 
               <div className="flex flex-col gap-3 border-t border-edge-subtle pt-5 sm:flex-row sm:justify-end">

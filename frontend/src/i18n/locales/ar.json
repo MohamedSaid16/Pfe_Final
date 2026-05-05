@@ -31,7 +31,8 @@
     "academicStructure": "الهيكلة الأكاديمية",
     "academicAssignments": "الإسنادات الأكاديمية",
     "siteConfiguration": "تهيئة الموقع",
-    "affectationCampaigns": "حملات التوجيه"
+    "affectationCampaigns": "حملات التوجيه",
+    "studentNotes": "علامات الطلبة"
   },
   "sections": {
     "academic": "أكاديمي",

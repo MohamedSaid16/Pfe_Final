@@ -32,6 +32,7 @@ import {
   requestPasswordReset,
   resetPasswordWithToken,
   updateCurrentUserPhoto,
+  updateCurrentUserSelfProfile,
   listUsersForAdminPdfExport,
   type AdminUserPdfExportScope,
 } from "../../modules/auth/auth.service";
@@ -421,6 +422,51 @@ export const changePasswordHandler = async (req: AuthRequest, res: Response) => 
       success: false,
       error: {
         code: "PASSWORD_CHANGE_FAILED",
+        message: error.message,
+      },
+    });
+  }
+};
+
+export const updateMyProfileHandler = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      });
+    }
+
+    const body = (req.body || {}) as { telephone?: unknown; phone?: unknown };
+    // Accept either `telephone` (matches the User column) or `phone` (UI-friendly).
+    const rawPhone = body.telephone !== undefined ? body.telephone : body.phone;
+
+    const patch: { telephone?: string | null } = {};
+    if (rawPhone !== undefined) {
+      if (rawPhone === null || rawPhone === "") {
+        patch.telephone = null;
+      } else if (typeof rawPhone === "string") {
+        patch.telephone = rawPhone;
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: { code: "INVALID_BODY", message: "phone must be a string" },
+        });
+      }
+    }
+
+    const user = await updateCurrentUserSelfProfile(req.user.id, patch);
+
+    return res.json({
+      success: true,
+      data: { user },
+      message: "Profile updated successfully",
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "PROFILE_UPDATE_FAILED",
         message: error.message,
       },
     });

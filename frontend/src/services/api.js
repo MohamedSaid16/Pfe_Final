@@ -308,6 +308,12 @@ export const authAPI = {
       method: 'DELETE',
     }),
 
+  updateMyProfile: (patch) =>
+    request('/api/v1/users/me/profile', {
+      method: 'PUT',
+      body: JSON.stringify(patch || {}),
+    }),
+
 
   forgotPassword: (email) =>
     request('/api/v1/auth/forgot-password', {
@@ -484,6 +490,26 @@ export const adminPanelAPI = {
 
   getUsers: (params = {}) =>
     request(`/api/v1/admin/users${buildQueryString(params)}`),
+
+  searchUsers: (q, extras = {}) =>
+    request(`/api/v1/admin/users/search${buildQueryString({ q, ...extras })}`),
+
+  // ── Student notes (academic moyenne) management ─────────────
+  listStudentNotes: (params = {}) =>
+    request(`/api/v1/admin/students/notes${buildQueryString(params)}`),
+  updateStudentNote: (etudiantId, note) =>
+    request(`/api/v1/admin/students/${etudiantId}/note`, {
+      method: 'PUT',
+      body: JSON.stringify({ note }),
+    }),
+  importStudentNotes: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request('/api/v1/admin/students/import-notes', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 
   updateUserRole: (userId, role) =>
     request(`/api/v1/admin/users/${userId}/role`, {

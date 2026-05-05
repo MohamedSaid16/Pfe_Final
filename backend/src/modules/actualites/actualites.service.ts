@@ -1,4 +1,4 @@
-import { Prisma, PrioriteAnnonce, StatusAnnonce } from "@prisma/client";
+import { CibleAnnonce, Prisma, PrioriteAnnonce, StatusAnnonce } from "@prisma/client";
 import prisma from "../../config/database";
 
 type AnnouncementWithRelations = Prisma.AnnonceGetPayload<{
@@ -156,6 +156,8 @@ const loadPublicAnnouncements = async (): Promise<AnnouncementWithRelations[]> =
   return prisma.annonce.findMany({
     where: {
       status: StatusAnnonce.publie,
+      // Public landing: only show announcements explicitly targeted at everyone.
+      cible: CibleAnnonce.tous,
       OR: [{ dateExpiration: null }, { dateExpiration: { gte: now } }],
     },
     include: {

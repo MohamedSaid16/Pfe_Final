@@ -6,13 +6,14 @@ import {
   getAnnonceByIdHandler,
   updateAnnonceHandler,
 } from "./annonce.controller";
-import { requireAuth, requireRole } from "../../middlewares/auth.middleware";
+import { optionalAuth, requireAuth, requireRole } from "../../middlewares/auth.middleware";
 import upload from "../../middlewares/annonces-upload.middleware";
 
 const router = Router();
 
-router.get("/", getAllAnnoncesHandler);
-router.get("/:id", getAnnonceByIdHandler);
+// Public list — but if a token is present we use it to scope cible.
+router.get("/", optionalAuth, getAllAnnoncesHandler);
+router.get("/:id", optionalAuth, getAnnonceByIdHandler);
 
 router.post("/", requireAuth, requireRole(["admin"]), upload.array("files", 10), createAnnonceHandler);
 router.put("/:id", requireAuth, requireRole(["admin"]), upload.array("files", 10), updateAnnonceHandler);

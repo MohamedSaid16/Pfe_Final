@@ -10,6 +10,10 @@ export { Card, CardHeader, CardTitle, CardDescription, CardBody, CardFooter } fr
 // Feedback
 export { Modal } from './Modal';
 export { Alert } from './Alert';
+export { Tooltip } from './Tooltip';
+export { EmptyState } from './EmptyState';
+export { KpiCard } from './KpiCard';
+export { Walkthrough } from './Walkthrough';
 
 // Form controls
 export { TextInput, PasswordInput, Checkbox } from './form';

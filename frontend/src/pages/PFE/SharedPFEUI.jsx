@@ -2,8 +2,9 @@ import React from 'react';
 import { WifiOff, Lock, AlertTriangle, RefreshCcw, Shield, ChevronRight, FileText, BarChart3, Clock, CheckCircle2, Users, Activity, Zap, TrendingUp } from 'lucide-react';
 
 export const getUserDisplayName = (user) => {
-  if (!user) return 'N/A';
-  return `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email || 'N/A';
+  if (!user) return 'Unassigned';
+  const fullName = `${user.prenom || ''} ${user.nom || ''}`.trim();
+  return fullName || user.email || 'Unassigned';
 };
 
 export function normalizeApiError(err) {

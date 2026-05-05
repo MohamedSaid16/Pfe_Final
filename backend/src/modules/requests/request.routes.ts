@@ -3,6 +3,7 @@ import { Router } from "express";
 import {
   createReclamation,
   getMyReclamations,
+  getReclamationQuotaHandler,
   createJustification,
   getMyJustifications,
   getReclamationTypes,
@@ -65,11 +66,14 @@ router.post(
   createReclamation
 );
 router.get("/reclamations", requireAuth, getMyReclamations);
+router.get("/reclamations/quota", requireAuth, getReclamationQuotaHandler);
 
 // ── Justifications ──────────────────────────────────────────
+// Justifications are tied to a student record (date d'absence, type, motif),
+// so guest submissions don't make sense — require authentication.
 router.post(
   "/justifications",
-  optionalAuth,
+  requireAuth,
   studentRequestUpload.array("files", 8),
   validateJustification,
   createJustification

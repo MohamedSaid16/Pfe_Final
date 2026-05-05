@@ -49,11 +49,13 @@ const ALL_MODULES = [
   { nameKey: 'nav.adminHub', path: '/admin', roles: ['admin'], permissions: ['users:manage'] },
   { nameKey: 'nav.analytics', path: '/dashboard/admin/analytics', roles: ['admin'], permissions: ['users:manage'] },
   { nameKey: 'nav.userManagement', path: '/dashboard/admin/users', roles: ['admin'], permissions: ['users:manage'] },
+  { nameKey: 'nav.pfeManagement', path: '/dashboard/admin/pfe-management', roles: ['admin'] },
   { nameKey: 'nav.academicStructure', path: '/dashboard/admin/academic/management', roles: ['admin'], permissions: ['departments:manage', 'specialites:manage'] },
   { nameKey: 'nav.academicAssignments', path: '/dashboard/admin/academic/assignments', roles: ['admin'], permissions: ['users:manage', 'roles:assign'] },
   { nameKey: 'nav.siteConfiguration', path: '/dashboard/admin/site-settings', roles: ['admin'], permissions: ['users:manage'] },
   { nameKey: 'nav.userHistory', path: '/dashboard/admin/history', roles: ['admin'], permissions: ['users:manage'] },
   { nameKey: 'nav.affectationCampaigns', path: '/dashboard/admin/affectation', roles: ['admin'], permissions: ['users:manage'] },
+  { nameKey: 'nav.studentNotes', path: '/dashboard/admin/student-notes', roles: ['admin'], permissions: ['users:manage'] },
 ];
 
 const ADMIN_REQUEST_ROLES = ['admin'];
