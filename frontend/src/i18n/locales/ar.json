@@ -32,7 +32,8 @@
     "academicAssignments": "الإسنادات الأكاديمية",
     "siteConfiguration": "تهيئة الموقع",
     "affectationCampaigns": "حملات التوجيه",
-    "studentNotes": "علامات الطلبة"
+    "studentNotes": "علامات الطلبة",
+    "contentModeration": "مراقبة المحتوى"
   },
   "sections": {
     "academic": "أكاديمي",

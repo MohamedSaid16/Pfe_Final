@@ -1,35 +1,15 @@
 import { Router } from "express";
-import { requireAuth, requireRole } from "../../middlewares/auth.middleware";
-import { chatHandler, analyzeDocumentHandler, moderateImageHandler, analyzeReclamationHandler } from "./ai.controller";
+import toxicRoutes from "./toxic.routes";
 
 const router = Router();
 
-router.post(
-  "/chat",
-  requireAuth,
-  requireRole(["etudiant", "enseignant", "admin"]),
-  chatHandler
-);
-
-router.post(
-  "/analyze-document",
-  requireAuth,
-  requireRole(["admin", "enseignant"]),
-  analyzeDocumentHandler
-);
-
-router.post(
-  "/analyze-reclamation",
-  requireAuth,
-  requireRole(["admin"]),
-  analyzeReclamationHandler
-);
-
-router.post(
-  "/moderate-image",
-  requireAuth,
-  requireRole(["admin", "enseignant"]),
-  moderateImageHandler
-);
+/**
+ * AI module entry point.
+ * Mounts all AI sub-routes under /api/v1/ai.
+ *
+ * Current sub-modules:
+ *   /toxic  — Toxicity analysis (text, image, PDF)
+ */
+router.use("/toxic", toxicRoutes);
 
 export default router;

@@ -56,6 +56,7 @@ const ALL_MODULES = [
   { nameKey: 'nav.userHistory', path: '/dashboard/admin/history', roles: ['admin'], permissions: ['users:manage'] },
   { nameKey: 'nav.affectationCampaigns', path: '/dashboard/admin/affectation', roles: ['admin'], permissions: ['users:manage'] },
   { nameKey: 'nav.studentNotes', path: '/dashboard/admin/student-notes', roles: ['admin'], permissions: ['users:manage'] },
+  { nameKey: 'nav.contentModeration', path: '/dashboard/content-moderation', roles: ['admin'] },
 ];
 
 const ADMIN_REQUEST_ROLES = ['admin'];

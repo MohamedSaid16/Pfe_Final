@@ -32,7 +32,8 @@
     "academicAssignments": "Academic Assignments",
     "siteConfiguration": "Site Configuration",
     "affectationCampaigns": "Affectation Campaigns",
-    "studentNotes": "Student Notes"
+    "studentNotes": "Student Notes",
+    "contentModeration": "Content Moderation"
   },
   "sections": {
     "academic": "Academic",

@@ -34,6 +34,7 @@ import AdminAcademicManagementPage from './pages/AdminAcademicManagementPage';
 import AdminAcademicAssignmentsPage from './pages/AdminAcademicAssignmentsPage';
 import AdminSiteSettingsPage from './pages/AdminSiteSettingsPage';
 import AIAssistantPage from './pages/AIAssistantPage';
+import ContentModerationPage from './pages/ContentModerationPage';
 import DocumentsPage from './pages/DocumentsPage';
 import RemiseCopie from './pages/RemiseCopie';
 import StudentNotesPage from './pages/StudentNotesPage';
@@ -216,6 +217,14 @@ function App() {
               <Route path="/dashboard/actualites" element={<ProtectedRoute><DashboardLayout><ActualitesPage /></DashboardLayout></ProtectedRoute>} />
               <Route path="/dashboard/announcements" element={<ProtectedRoute><DashboardLayout><AnnouncementsPage /></DashboardLayout></ProtectedRoute>} />
               <Route path="/dashboard/ai" element={<ProtectedRoute><DashboardLayout><AIAssistantPage /></DashboardLayout></ProtectedRoute>} />
+              <Route
+                path="/dashboard/content-moderation"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <DashboardLayout><ContentModerationPage /></DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/dashboard/documents"
                 element={
