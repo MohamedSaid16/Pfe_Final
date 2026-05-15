@@ -8,6 +8,16 @@ import { Card, CardHeader, CardBody, CardTitle, CardDescription, CardFooter } fr
 import { TextInput, PasswordInput, Checkbox } from '../design-system/components/form';
 import { Modal } from '../design-system/components/Modal';
 import { Alert } from '../design-system/components/Alert';
+import { Tooltip } from '../design-system/components/Tooltip';
+import { EmptyState } from '../design-system/components/EmptyState';
+import { KpiCard } from '../design-system/components/KpiCard';
+import { Walkthrough } from '../design-system/components/Walkthrough';
+import { 
+  Users, 
+  TrendingUp,
+  AlertTriangle,
+  FileText
+} from 'lucide-react';
 
 /**
  * COMPONENT SHOWCASE PAGE
@@ -154,37 +164,92 @@ function FeedbackShowcase() {
 // ============================================================================
 function CardShowcase() {
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Standard Card</CardTitle>
-          <CardDescription>This is how we display grouped information.</CardDescription>
-        </CardHeader>
-        <CardBody>
-          <p className="text-sm text-ink-secondary">
-            The Card component uses the `--shadow-card` token, which automatically adapts when switching to Dark Mode to remain visible without being overwhelming.
-          </p>
-        </CardBody>
-        <CardFooter className="flex justify-end">
-          <Button variant="secondary" size="sm">Action</Button>
-        </CardFooter>
-      </Card>
+    <div className="space-y-6">
+      <h4 className="text-sm font-semibold text-ink-secondary mb-3">KPI Cards (Widgets)</h4>
+      <div className="grid md:grid-cols-4 gap-4">
+        <KpiCard label="Active Users" value={1240} hint="Across all roles" Icon={Users} tone="brand" />
+        <KpiCard label="Revenue" value="$4,500" hint="+12% this month" Icon={TrendingUp} tone="success" />
+        <KpiCard label="System Alerts" value={3} hint="Action required" Icon={AlertTriangle} tone="warning" />
+        <KpiCard label="Pending Docs" value={14} hint="Needs review" Icon={FileText} tone="ink" />
+      </div>
 
-      <Card className="hover-lift border-brand">
-        <CardHeader>
-          <CardTitle className="text-brand">Interactive Card</CardTitle>
-          <CardDescription>With hover-lift utility</CardDescription>
-        </CardHeader>
-        <CardBody>
-          <p className="text-sm text-ink-secondary">
-            This card uses the `.hover-lift` utility class to provide physical feedback when users interact with it.
-          </p>
-        </CardBody>
-      </Card>
+      <h4 className="text-sm font-semibold text-ink-secondary mb-3 mt-8">Standard Cards</h4>
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Standard Card</CardTitle>
+            <CardDescription>This is how we display grouped information.</CardDescription>
+          </CardHeader>
+          <CardBody>
+            <p className="text-sm text-ink-secondary">
+              The Card component uses the `--shadow-card` token, which automatically adapts when switching to Dark Mode to remain visible without being overwhelming.
+            </p>
+          </CardBody>
+          <CardFooter className="flex justify-end">
+            <Button variant="secondary" size="sm">Action</Button>
+          </CardFooter>
+        </Card>
+
+        <Card className="hover-lift border-brand">
+          <CardHeader>
+            <CardTitle className="text-brand">Interactive Card</CardTitle>
+            <CardDescription>With hover-lift utility</CardDescription>
+          </CardHeader>
+          <CardBody>
+            <p className="text-sm text-ink-secondary">
+              This card uses the `.hover-lift` utility class to provide physical feedback when users interact with it.
+            </p>
+          </CardBody>
+        </Card>
+      </div>
     </div>
   );
 }
 
+// ============================================================================
+// 5. UTILITIES (TOOLTIPS, EMPTY STATES) SHOWCASE
+// ============================================================================
+function UtilitiesShowcase() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h4 className="text-sm font-semibold text-ink-secondary mb-3">Tooltips</h4>
+        <div className="flex gap-4">
+          <Tooltip label="This is a very helpful tooltip!" position="top">
+            <span tabIndex={0} className="inline-block px-4 py-2 border border-edge rounded-lg text-ink cursor-help">Hover me (Top)</span>
+          </Tooltip>
+          <Tooltip label="I appear on the right side." position="right">
+            <span tabIndex={0} className="inline-block px-4 py-2 border border-edge rounded-lg text-ink cursor-help">Hover me (Right)</span>
+          </Tooltip>
+        </div>
+      </div>
+
+      <div>
+        <h4 className="text-sm font-semibold text-ink-secondary mb-3">Empty State</h4>
+        <div className="border border-edge rounded-xl bg-surface-50 p-6">
+          <EmptyState 
+            title="No records found"
+            hint="You haven't added any documents to this folder yet. Get started by uploading your first file."
+            action={<Button onClick={() => alert('Clicked Upload')}>Upload Document</Button>}
+          />
+        </div>
+      </div>
+
+      <div>
+        <h4 className="text-sm font-semibold text-ink-secondary mb-3">Walkthrough Component</h4>
+        <div className="border border-edge rounded-xl bg-surface-50 p-6">
+           <Walkthrough 
+             steps={[
+               { title: "Welcome", content: "This is the first step of our walkthrough." },
+               { title: "Configuration", content: "Set your preferences here." },
+               { title: "Done", content: "You are ready to go!" }
+             ]}
+           />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ============================================================================
 // MAIN PAGE LAYOUT
@@ -218,6 +283,12 @@ export default function ComponentShowcase() {
       title: 'Cards (Organisms)',
       description: 'Containers for grouped information with header, body, and footer.',
       component: <CardShowcase />,
+    },
+    {
+      id: 'utilities',
+      title: 'Utilities (Tooltips, Empty States, Walkthroughs)',
+      description: 'Helper utilities and empty state components.',
+      component: <UtilitiesShowcase />,
     }
   ];
 
