@@ -1,0 +1,325 @@
+\documentclass[12pt,a4paper]{report}
+
+% --- Language & Font Support (Optimized for XeLaTeX) ---
+\usepackage{polyglossia}
+\usepackage{subcaption}
+\setmainlanguage{english}
+\setotherlanguage{arabic}
+
+% Specify a font that supports Arabic (Required for XeLaTeX)
+% Amiri is standard on Overleaf. If local, ensure the font is installed.
+\newfontfamily\arabicfont[Script=Arabic]{Amiri}
+
+% --- Base Packages ---
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{float}
+
+% --- Code Block Configuration ---
+\definecolor{codeblue}{rgb}{0.13,0.13,1}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+\lstset{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codeblue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{orange},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    tabsize=2
+}
+
+% --- Header and Footer ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Frontend Architecture - Group 8}
+\fancyfoot[C]{\thepage}
+
+\begin{document}
+
+% --- Cover Page ---
+\begin{titlepage}
+    \centering
+    
+    % --- TOP SECTION ---
+    {\Large \textbf{\textarabic{الجمهورية الجزائرية الديمقراطية الشعبية}}} \\
+    {\small \textbf{\textarabic{وزارة التعليم العالي والبحث العلمي}}} \\[0.3cm]
+    
+    \Large \textbf{PEOPLE'S DEMOCRATIC REPUBLIC OF ALGERIA}\\
+    \small \textbf{MINISTRY OF HIGHER EDUCATION AND SCIENTIFIC RESEARCH}
+    
+    \vfill % --- Gap 1 ---
+
+    \includegraphics[width=0.25\textwidth]{logo_univ.png}\\[0.4cm]
+    
+    {\Large \textbf{\textarabic{جامعة ابن خلدون تيارت}}} \\
+    \Large \textbf{Ibn Khaldoun University of Tiaret}\\
+    \large Department of Computer Science
+    
+    \vfill % --- Gap 2 ---
+    
+    \huge \textbf{Final Year Project (L3)}\\[0.5cm]
+    \LARGE \textbf{Development of a Frontend Architecture and a Modular Design System}
+    
+    \vfill % --- Gap 3 ---
+    
+    \large \textbf{Presented by:}\\[0.5cm]
+    \Large 
+    \begin{tabular}{c}
+        \textbf{Djellil Abdelkader Charef Eddine} \\
+        \textbf{Gaid Oussama} \\
+        \textbf{Derkaoui Mohamed} \\
+    \end{tabular}
+    
+    \vfill % --- Gap 4 ---
+    
+    \large \textbf{Group 8} \\
+    (Frontend/Backend Template)
+    
+    \vfill % --- Gap 5 ---
+    
+    \large \textbf{Academic Year:} 2025 - 2026
+\end{titlepage}
+
+% Ensure the main text is in English
+\selectlanguage{english}
+
+\chapter{Module Design: Core Template \& Frontend Architecture}
+
+\section{Module Presentation, Objectives, Features, Constraints, and Communication}
+
+\subsection{Presentation and Objectives}
+The \textbf{Core Template} module represents the foundational infrastructure of the university platform. It was designed to standardize the user experience and centralize cross-cutting logic. Its main objective is to provide a robust \textit{Design System} and a modular frontend architecture allowing other teams to develop their features without worrying about basic constraints.
+
+\subsection{Features and Constraints}
+\begin{itemize}
+    \item \textbf{Theming Engine:} Dynamic management of modes (Light/Dark) and institutional color accents.
+    \item \textbf{UI Library:} Provision of reusable atomic components (Buttons, Modals, Forms). To provide users with immediate insights into their data, Key Performance Indicator (KPI) cards are also extensively utilized, featuring large typography for metrics and contextual icons.
+    \item \textbf{Technical Constraints:} Obligation to maintain high performance (React DOM optimization), strict accessibility (WCAG), and native support for bidirectionality (LTR/RTL for Arabic).
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    % Row 1
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{inputs.png}
+        \caption{Input Fields}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{alerts.png}
+        \caption{Feedback Components}
+    \end{subfigure}
+
+    \vspace{0.3cm} % Small gap between rows
+
+    % Row 2
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{buttons.png}
+        \caption{Buttons and Actions}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{cards.png}
+        \caption{Basic Cards}
+    \end{subfigure}
+
+    \vspace{0.3cm} % Small gap between rows
+
+    % Row 3
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{kpi_forms.png}
+        \caption{KPI Cards}
+    \end{subfigure}
+
+    \caption{UI Library: Atomic component architecture featuring inputs, feedback alerts, buttons, basic cards, and KPI cards.}
+    \label{fig:ui_library}
+\end{figure}
+
+\subsection{Communication (API Contract) and Usage}
+The module defines communication standards between the client and the server. An interception layer (Axios Interceptors) has been implemented to normalize requests. 
+Every backend response must respect a strict JSON format, guaranteeing the frontend a predictable structure (\texttt{success}, \texttt{data}, or \texttt{error}), thus unifying error handling across the entire platform.
+
+\textbf{How and Where It is Used:}
+\begin{itemize}
+    \item \textbf{Token Management:} The Axios interceptor automatically attaches JWT tokens to outgoing requests and handles token expiration by intercepting 401 Unauthorized responses.
+    \item \textbf{Frontend Service Layer:} API calls are isolated into a dedicated \texttt{services/} directory. UI components do not call Axios directly but instead use these services, ensuring a clean decoupling between the views and data fetching logic.
+    \item \textbf{Global Error Handling:} By adhering to the contract, the frontend can catch API errors in a centralized manner and trigger global UI alerts without redundant error-checking code in every component.
+\end{itemize}
+
+\section{Modeling and Design}
+
+\subsection{Global Data Modeling}
+The application core relies on a centralized database model managed via Prisma. The \texttt{SiteSetting} model acts as a \textit{Singleton} allowing dynamic management of the institution's identity without code redeployment.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{SiteConfig.png} 
+    \caption{Administration interface for the SiteConfig module.}
+    \label{fig:admin_siteconfig}
+\end{figure}
+
+\subsection{Architectural Design and Data Flow}
+The frontend follows a modular, component-based architecture leveraging React's functional paradigm. To ensure maintainability, the architecture separates concerns into distinct layers:
+\begin{itemize}
+    \item \textbf{Presentation Layer (Views \& Components):} Responsible purely for rendering the UI. It strictly adheres to Atomic Design principles to maximize component reuse.
+    \item \textbf{Logic Layer (Hooks \& Contexts):} Custom React Hooks abstract away complex business logic, side effects, and local state, keeping the UI components clean and readable. 
+    \item \textbf{Service Layer:} All external backend communications (via Axios) are isolated here, completely decoupling data fetching from the React rendering cycle.
+\end{itemize}
+
+\subsection{Global State Management}
+Given the platform's multi-role complexity, state management utilizes a structured, hybrid approach to optimize rendering performance:
+\begin{itemize}
+    \item \textbf{Global State (React Context API):} Used for ubiquitous, rarely-changing data such as the active user session, UI Theme (Dark/Light), and Localization preferences, eliminating the "prop drilling" anti-pattern.
+    \item \textbf{Server State:} Managed by the Service layer, which guarantees that UI-displayed data (e.g., student grades, schedules) remains synchronized with the Prisma backend DB while standardizing error handling.
+    \item \textbf{Local State:} Strictly restrained within individual atomic components (e.g., modal visibility toggles, form input typing) to prevent unnecessary application-wide DOM re-renders.
+\end{itemize}
+
+\section{Implementation and Integration}
+
+\subsection{Theme Provider and Mode Switching}
+The implementation rejects the use of static colors in favor of semantic \textit{Design Tokens} (\texttt{--color-surface}, \texttt{--color-ink}). The \texttt{ThemeProvider} component acts as a wrapper around the application. It interacts with \textit{localStorage} and injects these attributes directly into the DOM, allowing real-time, global theme transitions between Light and Dark modes.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{light_theme.png}
+        \caption{Light Theme UI}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{dark_theme.png}
+        \caption{Dark Theme UI}
+    \end{subfigure}
+    \caption{Theming Engine: Real-time transition between Light and Dark modes.}
+    \label{fig:theme_provider}
+\end{figure}
+
+\subsection{Atomic Component Architecture}
+The interface construction follows the Atomic Design principle. For example, the \texttt{Button.jsx} component centralizes the logic for its different variants (\textit{Primary, Secondary, Ghost}), sizes, and states (\textit{Loading, Disabled}).
+
+\subsubsection{Global Interface Structure}
+The platform's ergonomics rely on a clear division of responsibilities between lateral and superior navigation. This structure ensures that the user maintains constant access to critical tools while maximizing the central workspace.
+
+\begin{itemize}
+    \item \textbf{Lateral Navigation (Sidebar):} This constitutes the application's main menu. It groups links to various modules (Dashboard, Profile, Settings) and uses semantic icons for quick visual recognition.
+    \item \textbf{Navigation Bar (Navbar):} Positioned at the top of the screen, it handles contextual and global actions, such as the theme switch (Light/Dark), notifications, and quick access to the user account.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{side-navBAR.png} 
+    \caption{Interface Architecture: Sidebar and Navbar organization.}
+    \label{fig:nav_layout}
+\end{figure}
+
+\subsection{Landing and Home Page Interface}
+The Home Page serves as the digital front door to the university platform. It is designed to be highly engaging, informational, and publicly accessible to external visitors. It highlights recent institutional announcements, showcases essential statistics, and provides distinct, secure login gateways for students, teachers, and administration. The typography, spacing, and layout were meticulously crafted to offer an optimal first impression that balancing institutional prestige with modern web aesthetics.
+
+\begin{figure}[H]
+    \centering
+    % NOTE: Update your folder with "home_page.png" or change this filename
+    \includegraphics[width=0.9\textwidth]{home_page.png}
+    \caption{The platform's Home Page, delivering institutional information and login access.}
+    \label{fig:home_page}
+\end{figure}
+
+\subsection{Dashboard UI/UX: Tailored Role Experiences}
+The application supports three distinct primary roles, each requiring a bespoke dashboard experience tailored to their specific needs and workflows.
+
+\begin{itemize}
+    \item \textbf{Administrator Dashboard:} Designed for global platform oversight. It aggregates real-time statistics via a dedicated Analytics view and organizes complex tasks like bulk user management, site configuration, and academic routing (PFE management, group assignments, and student notes). The UI relies on dense data grids, system health metrics, and comprehensive control forms.
+    \item \textbf{Teacher (Enseignant) Dashboard:} Structured around tabbed navigation (Overview, PFE, Jury, Teaching) for focused academic work. It cleanly separates their supervised PFE groups, assigned defense jury panels (synchronized directly with admin data), and currently taught modules filtered by academic year.
+    \item \textbf{Student (\'Etudiant) Dashboard:} A clean, read-only hub tailored to the student's personal record to reduce cognitive load. It features an overview of KPI cards, active requirement alerts (reclamations and justifications), their current PFE group assignments, and enrolled modules grouped automatically by semester (S1/S2).
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{admin_dashboard.png}
+        \caption{Admin Dashboard}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{teacher_dashboard.png}
+        \caption{Teacher Dashboard}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{student_dashboard.png}
+        \caption{Student Dashboard}
+    \end{subfigure}
+    \caption{Role-based Dashboard UI: Adapting UX specifically for Admin, Teacher, and Student workflows.}
+    \label{fig:dashboards}
+\end{figure}
+
+\section{Testing and Validation}
+
+\subsection{Responsiveness and Accessibility Validation}
+In-depth validations were performed to ensure adaptability (Responsive Design). Layouts, specifically the \texttt{Sidebar} and \texttt{Topbar}, automatically switch to touch-optimized components on mobile devices.
+
+\subsection{Responsiveness and Adaptability Validation (Responsive Design)}
+One of the major challenges of the \textbf{Core Template} module architecture is ensuring a consistent user experience across a multitude of devices. We conducted rigorous tests to validate the \textit{Design System's} behavior under mobility constraints.
+
+\begin{itemize}
+    \item \textbf{Breakpoint Management:} Use of Tailwind CSS to define precise breakpoints, allowing a smooth transition between Desktop, Tablet, and Mobile formats.
+    \item \textbf{Navigation Adaptation:} On small screens, the \textbf{Sidebar} automatically collapses or transforms into a drawer menu, while the \textbf{Navbar} simplifies its actions to preserve reading space.
+    \item \textbf{Component Flexibility:} "Grid" and "Card" type components were tested to switch from a multi-column display to a vertical stack without loss of information.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{full-desk.png}
+        \caption{Desktop View}
+    \end{subfigure}
+    \hspace{0.5cm} 
+    \begin{subfigure}[b]{0.25\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{mob_view.png}
+        \caption{Mobile View}
+    \end{subfigure}
+    
+    \caption{Validation of responsive behaviors and interface adaptability.}
+    \label{fig:responsive_validation}
+\end{figure}
+
+\section{Results}
+The deployment and adoption of this Core module by other teams have generated measurable results:
+\begin{itemize}
+    \item \textbf{Maximized Reusability:} Redundant CSS writing has been almost eliminated for functional teams, as they simply import components from the Design System.
+    \item \textbf{Platform Consistency:} 100\% of the interfaces, although developed by different groups, share the same navigation logic and visual identity.
+    \item \textbf{Communication Stability:} The centralized API architecture has drastically reduced data formatting errors between the frontend and multiple backend controllers.
+\end{itemize}
+
+\section{Conclusion}
+The development of the Core Template and Frontend Architecture successfully laid the robust, scalable foundation necessary for the entire university platform. By delivering a comprehensive Design System, a seamless cross-role UI/UX experience tailored for Administrators, Teachers, and Students, alongside centralized API management, a rigorously standardized development environment was established. This architecture significantly accelerated the development cycles of all other functional modules by eliminating redundant code and enforcing technical consistency.
+
+Furthermore, the strict adherence to modern web conventions—including mobile responsiveness, high accessibility standards (WCAG), and seamless localization handling (LTR/RTL support for Arabic)—guarantees an inclusive and intuitive user experience. Looking forward, the deeply modular nature of the atomic components and the flexible global state management (such as the dynamic theming engine) will allow the platform to scale effortlessly as new academic features and user requirements emerge. Ultimately, these architectural choices ensure that the final platform remains visually cohesive, highly maintainable, and perfectly aligned with the collaborative objectives set forth for this project.
+
+\end{document}

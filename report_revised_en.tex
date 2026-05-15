@@ -1,0 +1,243 @@
+\documentclass[12pt,a4paper]{report}
+
+% --- Language & Font Support ---
+\usepackage{polyglossia}
+\usepackage{subcaption}
+\setmainlanguage{english}
+\setotherlanguage{arabic}
+
+\newfontfamily\arabicfont[Script=Arabic]{Amiri}
+
+% --- Base Packages ---
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{lstlisting}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{float}
+
+% --- Code Block Configuration ---
+\definecolor{codeblue}{rgb}{0.13,0.13,1}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+\lstset{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codeblue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{orange},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    tabsize=2,
+    showstringspaces=false
+}
+
+% --- Header and Footer ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Frontend Architecture \& Core Template - Group 8}
+\fancyfoot[C]{\thepage}
+
+\begin{document}
+
+% --- Cover Page ---
+\begin{titlepage}
+    \centering
+    
+    {\Large \textbf{\textarabic{الجمهورية الجزائرية الديمقراطية الشعبية}}} \\
+    {\small \textbf{\textarabic{وزارة التعليم العالي والبحث العلمي}}} \\[0.3cm]
+    
+    \Large \textbf{PEOPLE'S DEMOCRATIC REPUBLIC OF ALGERIA}\\
+    \small \textbf{MINISTRY OF HIGHER EDUCATION AND SCIENTIFIC RESEARCH}
+    
+    \vfill
+
+    \includegraphics[width=0.25\textwidth]{logo_univ.png} % Suggestion: Place logo here
+    \\[0.4cm]
+    
+    {\Large \textbf{\textarabic{جامعة ابن خلدون تيارت}}} \\
+    \Large \textbf{Ibn Khaldoun University of Tiaret}\\
+    \large Department of Computer Science
+    
+    \vfill
+    
+    \huge \textbf{Final Year Project (L3)}\\[0.5cm]
+    \LARGE \textbf{Development of a Frontend Architecture and a Modular Design System}
+    
+    \vfill
+    
+    \large \textbf{Presented by:}\\[0.5cm]
+    \Large 
+    \begin{tabular}{c}
+        \textbf{Djellil Abdelkader Charef Eddine} \\
+        \textbf{Gaid Oussama} \\
+        \textbf{Derkaoui Mohamed} \\
+    \end{tabular}
+    
+    \vfill
+    
+    \large \textbf{Group 8} \\
+    (Frontend Architecture \& Core Template)
+    
+    \vfill
+    
+    \large \textbf{Academic Year:} 2025 - 2026
+\end{titlepage}
+
+\selectlanguage{english}
+
+\chapter{Module Design: Core Template \& Frontend Architecture}
+
+% ---------------------------------------------------------
+% 3.1 Presentation, Objectives, Features, and Constraints
+% ---------------------------------------------------------
+\section{Module Presentation, Objectives, Features, Constraints, and Communication}
+
+\subsection{Presentation and Objectives}
+The \textbf{Core Template} module constitutes the foundational infrastructure of the university platform. It is strictly dedicated to standardizing the user interface (UI), user experience (UX), and providing a global configuration shell via the \texttt{SiteSetting} model. The primary objective is to deliver a robust \textit{Design System} (a collection of reusable UI components) and a standard dashboard layout, enabling other functional groups to build their specific logic without reinventing basic interface elements.
+
+\subsection{Features and Constraints}
+\begin{itemize}
+    \item \textbf{Theming Engine:} Dynamic management of Light/Dark modes and configurable institutional accent colors using semantic CSS variables.
+    \item \textbf{Comprehensive UI Library:} Provision of reusable atomic components such as \texttt{Button}, \texttt{Input}, \texttt{Alert}, \texttt{Modal}, and \texttt{KpiCard}.
+    \item \textbf{Global Settings Management:} A dedicated backend model (\texttt{SiteSetting}) allowing administrators to dynamically alter the platform's visual identity (logo, title, theme).
+    \item \textbf{Technical Constraints:} High performance rendering through optimized React components and native bidirectionality support (LTR/RTL) catering to bilingual requirements.
+\end{itemize}
+
+\subsection{Communication (API Contract)}
+A core contribution of Group 8 is standardizing how the client application communicates with the backend. We implemented an Axios interceptor layer that guarantees every API response—whether successful or faulty—follows a strict JSON contract. This uniformity simplifies error handling for all developer teams across the platform.
+
+An example of our standardized JSON response contract:
+\begin{lstlisting}[language=json, caption=Standard API Response JSON Contract]
+{
+  "success": true,
+  "data": {
+    "siteTitle": "University Portal",
+    "theme": "light",
+    "logoUrl": "/uploads/logo.png"
+  },
+  "message": "Settings retrieved successfully"
+}
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    % TODO: Add a screenshot of Postman or browser console showing a successful API response here
+    \includegraphics[width=0.8\textwidth]{screenshots/api-response-postman.png}
+    \caption{API response interception and standardization in action.}
+    \label{fig:api_contract}
+\end{figure}
+
+% ---------------------------------------------------------
+% 3.2 Modeling and Design
+% ---------------------------------------------------------
+\section{Modeling and Design}
+
+\subsection{Global Configuration Entity (\texttt{SiteSetting})}
+While other groups managed complex business domains (such as assignments or users), Group 8 focused strictly on the global configuration layer. We developed the \texttt{SiteSetting} backend module, which acts as a dynamic singleton. This entity controls global properties accessed by the entire frontend upon loading.
+
+\begin{figure}[H]
+    \centering
+    % TODO: Add a screenshot of the SiteSettings Admin Page UI
+    \includegraphics[width=0.8\textwidth]{screenshots/siteconfig-admin.png} 
+    \caption{Administration Interface: Managing the SiteSetting database model dynamically.}
+    \label{fig:admin_siteconfig}
+\end{figure}
+
+
+% ---------------------------------------------------------
+% 3.3 Implementation and Integration
+% ---------------------------------------------------------
+\section{Implementation and Integration}
+
+\subsection{Design Tokens and the \texttt{ThemeProvider}}
+The UI relies heavily on semantic Design Tokens via Tailwind CSS. Instead of hardcoding colors, the styles map to generic variables like \texttt{--color-surface} and \texttt{--color-ink}. Our \texttt{ThemeProvider} component manages these variables within React's Context, directly manipulating the DOM's root element attributes to facilitate real-time, global theme switching.
+
+\subsection{Atomic Design System Library}
+The core deliverable for the frontend is the extensive component library located under \texttt{frontend/src/design-system/components/}. Every component is built to be stateless where possible, relying entirely on provided properties (\texttt{props}) for variants and states.
+
+\begin{figure}[H]
+    \centering
+    % TODO: Add a screenshot of the "Component Showcase" page showing Buttons/Inputs/Alerts in action
+    \includegraphics[width=0.9\textwidth]{screenshots/design-system-showcase.png}
+    \caption{Component Showcase: A centralized library for reusable elements.}
+    \label{fig:component_library}
+\end{figure}
+
+\subsection{The Dashboard Shell (Structural Canvas)}
+To unify the user experience across all modules, Group 8 developed the global Dashboard layout. This architectural shell includes:
+\begin{itemize}
+    \item \textbf{Navigation (\texttt{Sidebar.jsx}):} A collapsible lateral menu providing route structure.
+    \item \textbf{Context Bar (\texttt{Topbar.jsx}):} A superior bar containing global actions (Theme toggle, Profile access).
+    \item \textbf{Primitive Widgets (\texttt{KpiCard.jsx}):} Reusable analytical blocks (e.g., statistics tiles).
+\end{itemize}
+\textit{Note: Group 8 provides the structural shell and components. The specific dashboards (Teacher, Admin, Student) and their business logic were populated by respective functional groups.}
+
+\begin{figure}[H]
+    \centering
+    % TODO: Add a wireframe-style screenshot or a clean view of the empty dashboard shell featuring Sidebar & Topbar
+    \includegraphics[width=0.9\textwidth]{screenshots/dashboard-shell.png} 
+    \caption{The visual dashboard shell serving as a canvas for other modules.}
+    \label{fig:nav_layout}
+\end{figure}
+
+% ---------------------------------------------------------
+% 3.4 Tests and Validation
+% ---------------------------------------------------------
+\section{Tests and Validation}
+
+\subsection{Component Isolation and Robustness}
+To ensure the resilience of the Design System, components were validated in isolation through an integrated showcase environment. This environment verifies visual regressions and state behavior without requiring a full backend lifecycle.
+
+\subsection{Responsiveness and Adaptability (Responsive Design)}
+A major technical constraint managed by Group 8 was the execution of a multi-device UI. Utilizing Tailwind's breakpoint system, components seamlessly jump between column layouts on desktop and stacked views on mobile. Specifically, the \textbf{Sidebar} collapses intelligently into a drawer, preserving screen real estate on mobile devices.
+
+\begin{figure}[H]
+    \centering
+    % TODO: Add two side-by-side screenshots showing a page on Desktop vs Mobile
+    \begin{subfigure}[b]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{screenshots/responsive-desktop.png}
+        \caption{Desktop View}
+    \end{subfigure}
+    \hspace{0.5cm} 
+    \begin{subfigure}[b]{0.25\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{screenshots/responsive-mobile.png}
+        \caption{Mobile View}
+    \end{subfigure}
+    
+    \caption{Responsive behavior executed by the Core Template grids.}
+    \label{fig:responsive_validation}
+\end{figure}
+
+
+% ---------------------------------------------------------
+% 3.5 Results
+% ---------------------------------------------------------
+\section{Results}
+Implementing this central architecture delivered significant operational improvements across the development lifecycle:
+\begin{itemize}
+    \item \textbf{Eliminated Redundancy:} The component wrapper system completely removed the need for other groups to write custom CSS or manage complex UI states (e.g., hover effects, focus rings).
+    \item \textbf{Guaranteed Consistency:} Due to the \texttt{ThemeProvider} and normalized tokens, the transition from Light to Dark mode requires zero extra code from functional module developers.
+    \item \textbf{Reliable Communication:} By standardizing the Axios layer, payload discrepancies between the client interface and modular backend controllers were effectively eliminated.
+\end{itemize}
+
+% ---------------------------------------------------------
+% 3.6 Conclusion for Group 8
+% ---------------------------------------------------------
+\section{Conclusion for Group 8}
+Group 8 successfully delivered the architectural skeleton necessary and sufficient for the university's full platform. By abstracting away the complexities of state-driven UI (Design System), global theming, base layout organization (Dashboards), and API communication (Axios interceptors & \texttt{SiteSetting}), we provided the other teams highly-structured terrain built over a robust containerized infrastructure. This modular approach accelerated overall team velocity and ensured a highly professional and robust final interface.
+
+\end{document}

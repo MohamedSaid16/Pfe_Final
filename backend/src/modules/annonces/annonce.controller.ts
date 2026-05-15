@@ -25,12 +25,24 @@ const parseOptionalBoolean = (value: unknown): boolean | undefined => {
   return undefined;
 };
 
+type AnnounceAudienceLocal = "guest" | "student" | "teacher" | "admin";
+
+const resolveAudienceFromUser = (req: AuthRequest): AnnounceAudienceLocal => {
+  const roles = Array.isArray(req.user?.roles) ? req.user!.roles.map((r) => String(r).toLowerCase()) : [];
+  if (!roles.length) return "guest";
+  if (roles.some((r) => r === "admin" || r === "administration")) return "admin";
+  if (roles.some((r) => r === "enseignant" || r === "teacher")) return "teacher";
+  if (roles.some((r) => r === "etudiant" || r === "student")) return "student";
+  return "guest";
+};
+
 export const getAllAnnoncesHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const typeAnnonce = typeof req.query.typeAnnonce === "string" ? req.query.typeAnnonce : undefined;
     const isExpired = parseOptionalBoolean(req.query.isExpired);
+    const audience = resolveAudienceFromUser(req as AuthRequest);
 
-    const data = await getAnnounces({ typeAnnonce, isExpired });
+    const data = await getAnnounces({ typeAnnonce, isExpired, audience });
 
     res.status(200).json({
       success: true,
@@ -81,7 +93,7 @@ export const createAnnonceHandler = async (req: AuthRequest, res: Response): Pro
     }
 
     const body = req.body ?? {};
-    const { titre, contenu, priority, priorite, typeAnnonce, typeId, dateExpiration } = body;
+    const { titre, contenu, priority, priorite, typeAnnonce, typeId, dateExpiration, cible, visibility } = body;
 
     const files = Array.isArray(req.files)
       ? (req.files as Express.Multer.File[])
@@ -111,6 +123,9 @@ export const createAnnonceHandler = async (req: AuthRequest, res: Response): Pro
         typeAnnonce: typeof typeAnnonce === "string" ? typeAnnonce : undefined,
         typeId: typeId !== undefined ? Number(typeId) : undefined,
         dateExpiration: dateExpiration ? new Date(dateExpiration) : undefined,
+        cible:
+          typeof cible === "string" ? cible :
+          typeof visibility === "string" ? visibility : undefined,
       },
       req.user.id,
       files
@@ -143,7 +158,7 @@ export const updateAnnonceHandler = async (req: AuthRequest, res: Response): Pro
     }
 
     const body = req.body ?? {};
-    const { titre, contenu, priority, priorite, typeAnnonce, typeId, dateExpiration } = body;
+    const { titre, contenu, priority, priorite, typeAnnonce, typeId, dateExpiration, cible, visibility } = body;
 
     // ✅ MULTI FILES
     const files = Array.isArray(req.files)
@@ -173,6 +188,9 @@ export const updateAnnonceHandler = async (req: AuthRequest, res: Response): Pro
         typeAnnonce: typeof typeAnnonce === "string" ? typeAnnonce : undefined,
         typeId: typeId !== undefined ? Number(typeId) : undefined,
         dateExpiration: dateExpiration ? new Date(dateExpiration) : undefined,
+        cible:
+          typeof cible === "string" ? cible :
+          typeof visibility === "string" ? visibility : undefined,
 
         // ✅ PASS DELETED IDS
         removedDocumentIds,

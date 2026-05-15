@@ -1,0 +1,231 @@
+\documentclass[12pt,a4paper]{report}
+
+% --- Language & Font Support (Optimized for XeLaTeX) ---
+\usepackage{polyglossia}
+\usepackage{subcaption}
+\setmainlanguage{english}
+\setotherlanguage{arabic}
+
+% Specify a font that supports Arabic (Required for XeLaTeX)
+% Amiri is standard on Overleaf. If local, ensure the font is installed.
+\newfontfamily\arabicfont[Script=Arabic]{Amiri}
+
+% --- Base Packages ---
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{float}
+
+% --- Code Block Configuration ---
+\definecolor{codeblue}{rgb}{0.13,0.13,1}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+\lstset{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{codeblue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{orange},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    tabsize=2
+}
+
+% --- Header and Footer ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Frontend Architecture - Group 8}
+\fancyfoot[C]{\thepage}
+
+\begin{document}
+
+% --- Cover Page ---
+\begin{titlepage}
+    \centering
+    
+    % --- TOP SECTION ---
+    {\Large \textbf{\textarabic{الجمهورية الجزائرية الديمقراطية الشعبية}}} \\
+    {\small \textbf{\textarabic{وزارة التعليم العالي والبحث العلمي}}} \\[0.3cm]
+    
+    \Large \textbf{PEOPLE'S DEMOCRATIC REPUBLIC OF ALGERIA}\\
+    \small \textbf{MINISTRY OF HIGHER EDUCATION AND SCIENTIFIC RESEARCH}
+    
+    \vfill % --- Gap 1 ---
+
+    \includegraphics[width=0.25\textwidth]{logo_univ.png}\\[0.4cm]
+    
+    {\Large \textbf{\textarabic{جامعة ابن خلدون تيارت}}} \\
+    \Large \textbf{Ibn Khaldoun University of Tiaret}\\
+    \large Department of Computer Science
+    
+    \vfill % --- Gap 2 ---
+    
+    \huge \textbf{Final Year Project (L3)}\\[0.5cm]
+    \LARGE \textbf{Development of a Frontend Architecture and a Modular Design System}
+    
+    \vfill % --- Gap 3 ---
+    
+    \large \textbf{Presented by:}\\[0.5cm]
+    \Large 
+    \begin{tabular}{c}
+        \textbf{Djellil Abdelkader Charef Eddine} \\
+        \textbf{Gaid Oussama} \\
+        \textbf{Derkaoui Mohamed} \\
+    \end{tabular}
+    
+    \vfill % --- Gap 4 ---
+    
+    \large \textbf{Group 8} \\
+    (Frontend/Backend Template)
+    
+    \vfill % --- Gap 5 ---
+    
+    \large \textbf{Academic Year:} 2025 - 2026
+\end{titlepage}
+
+% Ensure the main text is in English
+\selectlanguage{english}
+
+\chapter{Module Design: Core Template \& Frontend Architecture}
+
+\section{Module Presentation, Objectives, Features, Constraints, and Communication}
+
+\subsection{Presentation and Objectives}
+The \textbf{Core Template} module represents the foundational infrastructure of the university platform. It was designed to standardize the user experience and centralize cross-cutting logic. Its main objective is to provide a robust \textit{Design System} and a modular frontend architecture allowing other teams to develop their features without worrying about basic constraints.
+
+\subsection{Features and Constraints}
+\begin{itemize}
+    \item \textbf{Theming Engine:} Dynamic management of modes (Light/Dark) and institutional color accents.
+    \item \textbf{UI Library:} Provision of reusable atomic components (Buttons, Modals, Forms).
+    \item \textbf{Technical Constraints:} Obligation to maintain high performance (React DOM optimization), strict accessibility (WCAG), and native support for bidirectionality (LTR/RTL for Arabic).
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    % Row 1
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{inputs.png}
+        \caption{Input Fields}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{alerts.png}
+        \caption{Feedback Components}
+    \end{subfigure}
+
+    \vspace{0.3cm} % Small gap between rows
+
+    % Row 2
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{buttons.png}
+        \caption{Buttons and Actions}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{cards.png}
+        \caption{Cards}
+    \end{subfigure}
+
+    \caption{UI Library: Atomic component architecture.}
+    \label{fig:ui_library}
+\end{figure}
+
+\subsection{Communication (API Contract)}
+The module defines communication standards between the client and the server. An interception layer (Axios Interceptors) has been implemented to normalize requests. 
+Every backend response must respect a strict JSON format, guaranteeing the frontend a predictable structure (\texttt{success}, \texttt{data}, or \texttt{error}), thus unifying error handling across the entire platform.
+
+\section{Modeling and Design}
+
+\subsection{Global Data Modeling}
+The application core relies on a centralized database model managed via Prisma. The \texttt{SiteSetting} model acts as a \textit{Singleton} allowing dynamic management of the institution's identity without code redeployment.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{SiteConfig.png} 
+    \caption{Administration interface for the SiteConfig module.}
+    \label{fig:admin_siteconfig}
+\end{figure}
+
+\subsection{Architectural Design}
+The design of the application's lifecycle follows a strict initialization logic. Upon startup, the application executes a precise sequence to ensure the interface reflects the database state and user preferences.
+
+\section{Implementation and Integration}
+
+\subsection{Semantic Tokens and the CSS Engine}
+The implementation rejects the use of static colors in favor of semantic \textit{Design Tokens} (\texttt{--color-surface}, \texttt{--color-ink}). The \texttt{ThemeProvider} component interacts with \textit{localStorage} and injects these attributes directly into the DOM, allowing real-time theme transitions.
+
+\subsection{Atomic Component Architecture}
+The interface construction follows the Atomic Design principle. For example, the \texttt{Button.jsx} component centralizes the logic for its different variants (\textit{Primary, Secondary, Ghost}), sizes, and states (\textit{Loading, Disabled}).
+
+\subsubsection{Global Interface Structure}
+The platform's ergonomics rely on a clear division of responsibilities between lateral and superior navigation. This structure ensures that the user maintains constant access to critical tools while maximizing the central workspace.
+
+\begin{itemize}
+    \item \textbf{Lateral Navigation (Sidebar):} This constitutes the application's main menu. It groups links to various modules (Dashboard, Profile, Settings) and uses semantic icons for quick visual recognition.
+    \item \textbf{Navigation Bar (Navbar):} Positioned at the top of the screen, it handles contextual and global actions, such as the theme switch (Light/Dark), notifications, and quick access to the user account.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{side-navBAR.png} 
+    \caption{Interface Architecture: Sidebar and Navbar organization.}
+    \label{fig:nav_layout}
+\end{figure}
+
+\section{Testing and Validation}
+
+\subsection{Responsiveness and Accessibility Validation}
+In-depth validations were performed to ensure adaptability (Responsive Design). Layouts, specifically the \texttt{Sidebar} and \texttt{Topbar}, automatically switch to touch-optimized components on mobile devices.
+
+\subsection{Responsiveness and Adaptability Validation (Responsive Design)}
+One of the major challenges of the \textbf{Core Template} module architecture is ensuring a consistent user experience across a multitude of devices. We conducted rigorous tests to validate the \textit{Design System's} behavior under mobility constraints.
+
+\begin{itemize}
+    \item \textbf{Breakpoint Management:} Use of Tailwind CSS to define precise breakpoints, allowing a smooth transition between Desktop, Tablet, and Mobile formats.
+    \item \textbf{Navigation Adaptation:} On small screens, the \textbf{Sidebar} automatically collapses or transforms into a drawer menu, while the \textbf{Navbar} simplifies its actions to preserve reading space.
+    \item \textbf{Component Flexibility:} "Grid" and "Card" type components were tested to switch from a multi-column display to a vertical stack without loss of information.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{full-desk.png}
+        \caption{Desktop View}
+    \end{subfigure}
+    \hspace{0.5cm} 
+    \begin{subfigure}[b]{0.25\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{mob_view.png}
+        \caption{Mobile View}
+    \end{subfigure}
+    
+    \caption{Validation of responsive behaviors and interface adaptability.}
+    \label{fig:responsive_validation}
+\end{figure}
+
+\section{Results}
+The deployment and adoption of this Core module by other teams have generated measurable results:
+\begin{itemize}
+    \item \textbf{Maximized Reusability:} Redundant CSS writing has been almost eliminated for functional teams, as they simply import components from the Design System.
+    \item \textbf{Platform Consistency:} 100\% of the interfaces, although developed by different groups, share the same navigation logic and visual identity.
+    \item \textbf{Communication Stability:} The centralized API architecture has drastically reduced data formatting errors between the frontend and multiple backend controllers.
+\end{itemize}
+
+\end{document}

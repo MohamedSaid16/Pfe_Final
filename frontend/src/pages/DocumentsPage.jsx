@@ -4,26 +4,20 @@ import { useAuth } from '../contexts/AuthContext';
 import univLogo from '../assets/images/ibnKhaldoun.jpg';
 
 // ─────────────────────────────────────────────────────────────
-// PDF generation (html2canvas + jsPDF, loaded on demand from CDN)
+// PDF generation — uses the bundled html2pdf.js (which embeds
+// html2canvas + jsPDF). Loaded lazily so the dependency is only
+// pulled into the chunk that actually needs it. The previous CDN
+// loader was fragile: a script tag inserted by a prior call could
+// resolve before the script had executed, leaving
+// `window.html2canvas` undefined.
 // ─────────────────────────────────────────────────────────────
-const PDF_LIBS = {
-  jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-};
-
-const loadScript = (src) =>
-  new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) return resolve();
-    const el = document.createElement('script');
-    el.src = src;
-    el.onload = resolve;
-    el.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(el);
-  });
-
-const ensurePdfLibs = async () => {
-  if (!window.jspdf) await loadScript(PDF_LIBS.jspdf);
-  if (!window.html2canvas) await loadScript(PDF_LIBS.html2canvas);
+let html2pdfLoader = null;
+const getHtml2Pdf = () => {
+  if (!html2pdfLoader) {
+    html2pdfLoader = import('html2pdf.js/dist/html2pdf.bundle.min.js')
+      .then((module) => module.default || module);
+  }
+  return html2pdfLoader;
 };
 
 const buildReferenceCode = (requestId, documentName) => {
@@ -155,7 +149,7 @@ const buildOfficialHTML = ({ title, bodyHTML, requestId, ref, logoUrl, generated
 };
 
 const generatePdfBlob = async ({ title, bodyHTML, requestId, ref }) => {
-  await ensurePdfLibs();
+  const html2pdf = await getHtml2Pdf();
   // Ensure Arabic fonts loaded (Amiri / Noto Sans Arabic injected via index.html)
   if (document.fonts && typeof document.fonts.ready === 'object') {
     await document.fonts.ready;
@@ -166,14 +160,16 @@ const generatePdfBlob = async ({ title, bodyHTML, requestId, ref }) => {
   container.innerHTML = buildOfficialHTML({ title, bodyHTML, requestId, ref, logoUrl: univLogo, generatedOn });
   document.body.appendChild(container);
   try {
-    const canvas = await window.html2canvas(container, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const pdfW = pdf.internal.pageSize.getWidth();
-    const pdfH = (canvas.height * pdfW) / canvas.width;
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
-    return pdf.output('blob');
+    return await html2pdf()
+      .set({
+        margin: 0,
+        filename: `${title || 'document'}.pdf`,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4' },
+      })
+      .from(container)
+      .outputPdf('blob');
   } finally {
     document.body.removeChild(container);
   }

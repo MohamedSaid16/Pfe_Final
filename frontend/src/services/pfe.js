@@ -63,6 +63,15 @@ export const pfeAdminAPI = {
       body: JSON.stringify(payload),
     }),
 
+  // Atomic: create a group + assign every member (with one chef_groupe) in a
+  // single backend transaction. Preferred over chaining createGroup +
+  // addGroupMember when bulk-assembling a group from a promo roster.
+  createGroupManual: (payload) =>
+    request('/api/v1/pfe/groupes/manual', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   deleteGroup: (groupId) =>
     request(`/api/v1/pfe/groupes/${groupId}`, { method: 'DELETE' }),
 

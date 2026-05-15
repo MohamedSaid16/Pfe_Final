@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, Settings2, Users, BookOpen, Scale, Eye } from 'lucide-react';
+import { Loader2, BookOpen, Scale, Eye } from 'lucide-react';
 import { pfeAdminAPI } from '../../../services/pfe';
 
 const SWITCH_BASE = 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer';
@@ -212,15 +212,6 @@ export default function PFEConfigCard() {
             loading={saving.studentVisibilityOpen}
             onToggle={() => handleToggle('studentVisibilityOpen')}
           />
-          <ToggleRow
-            Icon={Users}
-            label="Allow student selection"
-            description="Students can select and claim PFE subjects. When disabled, only admin can assign."
-            enabled={config.allowStudentSelection}
-            loading={saving.allowStudentSelection}
-            onToggle={() => handleToggle('allowStudentSelection')}
-          />
-
           {/* ── Limits ──────────────────────────────────────── */}
           <div className="pt-3 pb-1">
             <p className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-2">Limits & Rules</p>

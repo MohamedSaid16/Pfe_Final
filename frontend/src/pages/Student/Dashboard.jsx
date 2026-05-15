@@ -7,6 +7,7 @@
 */
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { BookOpen, FileText, Sparkles, GraduationCap, HelpCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import ProfileCard from '../../components/dashboard/student/ProfileCard';
 import PromoCard from '../../components/dashboard/student/PromoCard';
@@ -16,6 +17,26 @@ import DashboardCharts from '../../components/dashboard/student/Charts';
 import PfeInfoCard from '../../components/dashboard/student/PfeInfoCard';
 import { studentDashboardService } from '../../services/studentDashboard';
 import { academicAPI } from '../../services/api';
+import { EmptyState, Walkthrough } from '../../design-system/components';
+import useFirstTimeTour from '../../hooks/useFirstTimeTour';
+
+const STUDENT_TOUR_STEPS = [
+  {
+    Icon: Sparkles,
+    title: 'Your dashboard',
+    body: 'A read-only overview of your academic profile. Everything here is sourced from your student record — ask the admin if anything looks wrong.',
+  },
+  {
+    Icon: FileText,
+    title: 'Reclamations & justifications',
+    body: 'Track everything you have submitted in the activity overview. To file a new request, open the "Requests" page from the sidebar.',
+  },
+  {
+    Icon: GraduationCap,
+    title: 'PFE & modules',
+    body: 'See your PFE assignment, your group, and the modules of your promo for the active academic year — grouped by semester.',
+  },
+];
 
 const MODULE_TYPE_TONE = {
   cours: 'bg-indigo-100 text-indigo-700',
@@ -65,8 +86,12 @@ function MyModulesSection({ items, loading }) {
       {loading ? (
         <div className="p-8 text-center text-sm text-ink-tertiary">Loading…</div>
       ) : items.length === 0 ? (
-        <div className="p-8 text-center text-sm text-ink-tertiary">
-          No modules assigned yet for your promo. Ask the admin if this looks wrong.
+        <div className="p-6">
+          <EmptyState
+            Icon={BookOpen}
+            title="No modules yet"
+            hint="Modules will appear here once the administration assigns your promo for the active year."
+          />
         </div>
       ) : (
         bySemester.map(([sem, rows]) => (
@@ -103,10 +128,22 @@ function MyModulesSection({ items, loading }) {
   );
 }
 
+// Labels for the dashboard PFE chart.
+//
+// The backend's `assignmentStatus` describes the subject's lifecycle ("draft"
+// before admin locks the assignment, "assigned" once locked, "finalized" once
+// the defense closes). For a student, what matters is whether a PFE exists —
+// `hasPfe: true` already guarantees one. We collapse "draft" and "assigned"
+// into a single "Assigned" label so a student with a topic never sees a
+// status that suggests they don't have one.
+//
+// Keys here MUST match the cases handled by PfeStatusCard in
+// components/dashboard/student/Charts.jsx — otherwise the chart silently
+// falls back to "Not selected".
 const PFE_STATUS_TO_CHART_LABEL = {
-  draft: 'Not selected',
-  assigned: 'Pending approval',
-  finalized: 'Approved',
+  draft: 'Assigned',
+  assigned: 'Assigned',
+  finalized: 'Completed',
 };
 
 function deriveStats(summary, pfe) {
@@ -171,6 +208,11 @@ function deriveAlerts(summary) {
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const tour = useFirstTimeTour({
+    userId: user?.id,
+    tourId: 'student-dashboard-v1',
+    ready: Boolean(user?.id),
+  });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -233,14 +275,37 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-6">
-      <header className="bg-surface rounded-lg border border-edge shadow-card p-6">
-        <h1 className="text-xl font-bold text-ink tracking-tight">
-          Welcome, {greetingName}
-        </h1>
-        <p className="mt-2 text-sm text-ink-tertiary">
-          Your personal dashboard — read-only overview of your academic profile.
-        </p>
+      <header className="relative overflow-hidden rounded-2xl border border-edge bg-surface p-6 shadow-sm sm:p-8">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-brand/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-brand/5 blur-2xl" />
+        <div className="relative">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-tertiary">
+            Student
+          </p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+            Welcome, {greetingName}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-ink-secondary">
+            Your personal dashboard — read-only overview of your academic profile.
+          </p>
+          <button
+            type="button"
+            onClick={tour.replay}
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:text-brand-hover"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            Replay tour
+          </button>
+        </div>
       </header>
+
+      <Walkthrough
+        open={tour.open}
+        title="Student Dashboard · Tour"
+        steps={STUDENT_TOUR_STEPS}
+        onClose={tour.dismiss}
+        onFinish={tour.markSeen}
+      />
 
       {error && (
         <div className="bg-danger/10 border border-danger/30 text-danger text-sm px-4 py-3 rounded-md">

@@ -454,6 +454,18 @@ function DefensePanel({ groups }) {
       setError('President is required.');
       return;
     }
+    // Defense scheduling fields are mandatory at compose time so the
+    // student/teacher views never end up rendering "Unscheduled / TBD"
+    // for a jury that has been assigned. Admins who want to defer the
+    // schedule should leave the jury for later instead of saving early.
+    if (!formData.date || !formData.time) {
+      setError('Defense date and time are required.');
+      return;
+    }
+    if (!formData.room || !formData.room.trim()) {
+      setError('Defense room is required.');
+      return;
+    }
     setSaving(true);
     setError('');
     setSuccess('');
@@ -466,9 +478,9 @@ function DefensePanel({ groups }) {
             enseignantId: Number(m.enseignantId),
             role: m.role,
           })),
-          date: formData.date || null,
-          time: formData.time || null,
-          room: formData.room || null,
+          date: formData.date,
+          time: formData.time,
+          room: formData.room.trim(),
         }),
       });
       // Refresh jury data
@@ -608,30 +620,39 @@ function DefensePanel({ groups }) {
                 ))}
               </div>
 
-              {/* Date / Time / Room */}
+              {/* Date / Time / Room — all required so the schedule is always set */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-ink-secondary uppercase">Defense Date</label>
+                  <label className="block text-xs font-semibold text-ink-secondary uppercase">
+                    Defense Date <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="date"
+                    required
                     value={formData.date}
                     onChange={e => setFormData(p => ({ ...p, date: e.target.value }))}
                     className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-ink-secondary uppercase">Time</label>
+                  <label className="block text-xs font-semibold text-ink-secondary uppercase">
+                    Time <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="time"
+                    required
                     value={formData.time}
                     onChange={e => setFormData(p => ({ ...p, time: e.target.value }))}
                     className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-ink-secondary uppercase">Room</label>
+                  <label className="block text-xs font-semibold text-ink-secondary uppercase">
+                    Room <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="text"
+                    required
                     placeholder="e.g. Amphi A"
                     value={formData.room}
                     onChange={e => setFormData(p => ({ ...p, room: e.target.value }))}
@@ -652,8 +673,15 @@ function DefensePanel({ groups }) {
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={saving || !formData.presidentId}
-                  className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-xl bg-brand text-surface hover:bg-brand-hover disabled:opacity-50 transition-all"
+                  disabled={
+                    saving
+                    || !formData.presidentId
+                    || !formData.date
+                    || !formData.time
+                    || !formData.room
+                    || !formData.room.trim()
+                  }
+                  className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-xl bg-brand text-surface hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {saving ? 'Saving...' : 'Save Jury & Schedule'}

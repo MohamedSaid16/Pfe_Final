@@ -38,9 +38,14 @@ function ChartShell({ title, children, className = '' }) {
 }
 
 function PfeStatusCard({ status }) {
+  // Keep these keys in sync with PFE_STATUS_TO_CHART_LABEL on the dashboard.
+  // Unknown statuses fall through to "Not selected" so a missing/unmatched
+  // value never crashes the chart — but it should never happen in practice.
   const config = {
+    Assigned:          { icon: CheckCircle,  color: 'text-brand',   bg: 'bg-brand/10',   border: 'border-brand/20',   label: 'Assigned' },
     Approved:          { icon: CheckCircle,  color: 'text-success', bg: 'bg-success/10', border: 'border-success/20', label: 'Approved' },
     'Pending approval': { icon: Clock,        color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20', label: 'Pending Approval' },
+    Completed:         { icon: CheckCircle,  color: 'text-success', bg: 'bg-success/10', border: 'border-success/20', label: 'Completed' },
     Rejected:          { icon: XCircle,       color: 'text-danger',  bg: 'bg-danger/10',  border: 'border-danger/20',  label: 'Rejected' },
     'Not selected':    { icon: FileQuestion,  color: 'text-ink-tertiary', bg: 'bg-edge/20', border: 'border-edge', label: 'Not Selected' },
   };

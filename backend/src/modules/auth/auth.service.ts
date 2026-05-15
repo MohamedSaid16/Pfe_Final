@@ -469,9 +469,12 @@ export const createUserByAdmin = async (data: {
 };
 
 export const getAcademicManagementOptions = async (): Promise<{
-  specialites: Array<{ id: number; nom: string; niveau: string | null }>;
-  promos: Array<{ id: number; nom: string | null; section: string | null; anneeUniversitaire: string | null; specialiteId: number | null; specialiteNom: string | null }>;
-  modules: Array<{ id: number; nom: string; code: string; semestre: number | null; specialiteId: number; specialiteNom: string | null }>;
+  // `nom` stays for backward-compat with older callers; new clients should
+  // prefer the bilingual `nom_ar` / `nom_en` fields and pick one based on
+  // the active UI language.
+  specialites: Array<{ id: number; nom: string; nom_ar: string | null; nom_en: string | null; niveau: string | null }>;
+  promos: Array<{ id: number; nom: string | null; nom_ar: string | null; nom_en: string | null; section: string | null; anneeUniversitaire: string | null; specialiteId: number | null; specialiteNom: string | null }>;
+  modules: Array<{ id: number; nom: string; nom_ar: string | null; nom_en: string | null; code: string; semestre: number | null; specialiteId: number; specialiteNom: string | null }>;
 }> => {
   const [specialites, promos, modules] = await Promise.all([
     prisma.specialite.findMany({
@@ -516,12 +519,19 @@ export const getAcademicManagementOptions = async (): Promise<{
   return {
     specialites: specialites.map((item) => ({
       id: item.id,
+      // Single-string fallback kept so existing clients keep working.
       nom: item.nom_ar || item.nom_en || `Specialite ${item.id}`,
+      // Bilingual fields the dropdown actually wants — null when truly absent
+      // (NOT replaced with the id) so the UI can show "Unnamed Specialite".
+      nom_ar: item.nom_ar ?? null,
+      nom_en: item.nom_en ?? null,
       niveau: item.niveau ?? null,
     })),
     promos: promos.map((item) => ({
       id: item.id,
       nom: item.nom_ar || item.nom_en,
+      nom_ar: item.nom_ar ?? null,
+      nom_en: item.nom_en ?? null,
       section: item.section,
       anneeUniversitaire: item.anneeUniversitaire,
       specialiteId: item.specialiteId,
@@ -530,6 +540,8 @@ export const getAcademicManagementOptions = async (): Promise<{
     modules: modules.map((item) => ({
       id: item.id,
       nom: item.nom_ar || item.nom_en || `Module ${item.id}`,
+      nom_ar: item.nom_ar ?? null,
+      nom_en: item.nom_en ?? null,
       code: item.code,
       semestre: item.semestre,
       specialiteId: item.specialiteId,
@@ -1475,6 +1487,36 @@ export const getUserById = async (userId: number) => {
     permissions: authorization.permissions,
     memberships,
   };
+};
+
+// Phone shape: digits, spaces, dashes, parens, optional leading "+". 6–20 chars.
+const PHONE_FORMAT_REGEX = /^\+?[\d\s().-]{6,20}$/;
+
+export const updateCurrentUserSelfProfile = async (
+  userId: number,
+  patch: { telephone?: string | null }
+): Promise<Awaited<ReturnType<typeof getUserById>>> => {
+  const data: { telephone?: string | null } = {};
+
+  if (patch.telephone !== undefined) {
+    if (patch.telephone === null || String(patch.telephone).trim() === "") {
+      data.telephone = null;
+    } else {
+      const trimmed = String(patch.telephone).trim();
+      if (!PHONE_FORMAT_REGEX.test(trimmed)) {
+        throw new AuthServiceError("Invalid phone format");
+      }
+      data.telephone = trimmed;
+    }
+  }
+
+  if (Object.keys(data).length === 0) {
+    // Nothing to change — return current state so the client can refresh anyway.
+    return getUserById(userId);
+  }
+
+  await prisma.user.update({ where: { id: userId }, data });
+  return getUserById(userId);
 };
 
 export const updateCurrentUserPhoto = async (

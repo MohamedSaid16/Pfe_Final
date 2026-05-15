@@ -1,24 +1,31 @@
 /*
-  Intent: A student or teacher viewing their own identity within the institution.
-          Not a social profile — an academic identity card brought to screen.
-          Three zones:
-          1. Identity header — avatar, name, role, department (the seal of who you are)
-          2. Academic information — enrollment details, supervisor, academic stats
-          3. Contact & documents — email, phone, downloadable attestations
-  Palette: canvas base, surface cards. Brand for identity accent, semantic for status.
-  Depth: shadow-card + border-edge on all cards. No stacked shadows.
-  Surfaces: canvas (page bg via layout), surface (card), surface-200 (stat wells).
-  Typography: Inter. Section headings = text-base font-semibold. Body = text-sm.
-  Spacing: 4px base. Cards p-6. gap-6 between sections.
+  Profile page — modern card-based layout (Notion/Stripe style).
+  Identity card + Editable info card + Read-only contact card.
+  Editing is limited to phone number and avatar; everything else is admin-managed.
 */
 
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import {
+  Pencil,
+  Phone,
+  Mail,
+  Building2,
+  GraduationCap,
+  Shield,
+  Calendar,
+  CheckCircle2,
+  Camera,
+  X,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import request, { resolveMediaUrl } from '../services/api';
+import request, { authAPI, resolveMediaUrl } from '../services/api';
 
 /* ── Helpers ────────────────────────────────────────────────── */
+
+const PHONE_PATTERN = /^\+?[\d\s().-]{6,20}$/;
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -26,36 +33,24 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-/* ── Info Row ──────────────────────────────────────────────── */
-function InfoRow({ label, value, icon }) {
-  return (
-    <div className="flex items-start gap-3 py-2.5">
-      {icon && <span className="w-4 h-4 text-ink-tertiary shrink-0 mt-0.5">{icon}</span>}
-      <div className="min-w-0">
-        <p className="text-xs text-ink-muted">{label}</p>
-        <p className="text-sm font-medium text-ink mt-0.5">{value || '—'}</p>
-      </div>
-    </div>
-  );
-}
-
-/* Helper: does the user have a student-like role? */
 function isStudentRole(roles) {
   if (!roles) return true;
   const arr = Array.isArray(roles) ? roles : [roles];
-  return arr.some(r => ['STUDENT', 'etudiant'].includes(r.toUpperCase ? r.toUpperCase() : r));
+  return arr.some((r) => ['STUDENT', 'etudiant'].includes(r.toUpperCase ? r.toUpperCase() : r));
 }
 
-/* ── Component ──────────────────────────────────────────────── */
+/* ── Page ──────────────────────────────────────────────────── */
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, fetchUser } = useAuth();
   const location = useLocation();
   const selectedStudentProfile = location.state?.selectedStudentProfile;
   const selectedStudentEtudiantId = Number(
     selectedStudentProfile?.studentEtudiantId || selectedStudentProfile?.etudiantId || 0
   );
+
   const [selectedStudentData, setSelectedStudentData] = useState(null);
   const [selectedStudentLoading, setSelectedStudentLoading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     const etudiantId = selectedStudentEtudiantId;
@@ -65,28 +60,18 @@ export default function ProfilePage() {
     }
 
     let cancelled = false;
-
     (async () => {
       try {
         setSelectedStudentLoading(true);
         const res = await request(`/api/v1/disciplinary/students/${etudiantId}/profile`);
-        if (!cancelled) {
-          setSelectedStudentData(res?.data || null);
-        }
+        if (!cancelled) setSelectedStudentData(res?.data || null);
       } catch {
-        if (!cancelled) {
-          setSelectedStudentData(null);
-        }
+        if (!cancelled) setSelectedStudentData(null);
       } finally {
-        if (!cancelled) {
-          setSelectedStudentLoading(false);
-        }
+        if (!cancelled) setSelectedStudentLoading(false);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [selectedStudentEtudiantId]);
 
   if (!user) return null;
@@ -94,11 +79,13 @@ export default function ProfilePage() {
   const student = isStudentRole(user.roles);
   const rolePretty = (user.roles?.[0] || 'etudiant').replace(/_/g, ' ');
 
-  /* Student sub-record (populated by /auth/me → getUserById) */
   const dept = user.etudiant?.promo?.specialite?.filiere?.departement?.nom || '—';
   const spec = user.etudiant?.promo?.specialite?.nom || '—';
   const selectedUser = selectedStudentData?.user || null;
-  const selectedDepartment = selectedStudentData?.promo?.specialite?.filiere?.departement?.nom || selectedStudentProfile?.department || '—';
+  const selectedDepartment =
+    selectedStudentData?.promo?.specialite?.filiere?.departement?.nom ||
+    selectedStudentProfile?.department ||
+    '—';
   const selectedSpeciality = selectedStudentData?.promo?.specialite?.nom || '—';
   const isViewingSelectedStudent = Boolean(selectedStudentProfile);
 
@@ -109,148 +96,396 @@ export default function ProfilePage() {
   const pageDepartment = isViewingSelectedStudent ? selectedDepartment : dept;
   const pageSpeciality = isViewingSelectedStudent ? selectedSpeciality : spec;
 
-  return (
-    <div className="space-y-6 max-w-3xl min-w-0">
+  const canEdit = !isViewingSelectedStudent;
 
-      {/* ── Page Header ────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+  return (
+    <div className="space-y-6 max-w-4xl min-w-0 mx-auto">
+
+      {/* ── Page Header ─────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-ink tracking-tight">Profile</h1>
           <p className="mt-1 text-sm text-ink-tertiary">
-            {isViewingSelectedStudent ? 'Student academic identity and personal information.' : 'Your academic identity and personal information.'}
+            {isViewingSelectedStudent
+              ? 'Student academic identity and personal information.'
+              : 'Your academic identity and personal information.'}
           </p>
         </div>
-        {/* Edit button */}
-        <button className="px-4 py-2 text-sm font-medium text-ink-secondary bg-surface border border-edge rounded-md hover:bg-surface-200 transition-colors duration-150 flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-          </svg>
-          Edit profile
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-edge bg-surface px-4 py-2 text-sm font-medium text-ink-secondary shadow-sm hover:bg-surface-200 transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+            Edit profile
+          </button>
+        )}
       </div>
 
-      {selectedStudentProfile ? (
-        <div className="rounded-lg border border-edge-strong bg-brand/5 p-4">
+      {selectedStudentProfile && (
+        <div className="rounded-xl border border-edge-strong bg-brand/5 p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-brand">Selected Student</p>
-          <p className="mt-2 text-sm font-semibold text-ink">{selectedUser ? `${selectedUser.prenom || ''} ${selectedUser.nom || ''}`.trim() : (selectedStudentProfile.name || 'Unknown student')}</p>
-          <p className="text-xs text-ink-tertiary">
-            {(selectedStudentProfile.studentId || 'N/A')} · {(selectedStudentProfile.department || 'N/A')}
+          <p className="mt-2 text-sm font-semibold text-ink">
+            {selectedUser
+              ? `${selectedUser.prenom || ''} ${selectedUser.nom || ''}`.trim()
+              : selectedStudentProfile.name || 'Unknown student'}
           </p>
-          {selectedStudentLoading ? <p className="mt-2 text-xs text-ink-muted">Loading full student profile...</p> : null}
+          <p className="text-xs text-ink-tertiary">
+            {selectedStudentProfile.studentId || 'N/A'} · {selectedStudentProfile.department || 'N/A'}
+          </p>
+          {selectedStudentLoading && (
+            <p className="mt-2 text-xs text-ink-muted">Loading full student profile…</p>
+          )}
         </div>
-      ) : null}
+      )}
 
-      {/* ── Identity Card ──────────────────────────────────── */}
-      <div className="relative bg-surface rounded-lg border border-edge shadow-card">
-        {/* Brand banner */}
-        <div className="h-24 bg-gradient-to-r from-brand to-brand-hover relative rounded-t-lg overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <svg className="w-full h-full" viewBox="0 0 400 96" fill="none" preserveAspectRatio="xMidYMid slice">
-              <circle cx="350" cy="20" r="80" fill="white" opacity="0.1" />
-              <circle cx="50" cy="80" r="60" fill="white" opacity="0.05" />
-            </svg>
-          </div>
+      {/* ── Identity Header Card ────────────────────────────── */}
+      <section className="relative bg-surface rounded-2xl border border-edge shadow-card overflow-hidden">
+        <div className="h-28 bg-gradient-to-r from-brand to-brand-hover relative">
+          <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 400 96" preserveAspectRatio="xMidYMid slice">
+            <circle cx="350" cy="20" r="80" fill="white" opacity="0.15" />
+            <circle cx="50" cy="80" r="60" fill="white" opacity="0.07" />
+          </svg>
         </div>
 
         <div className="px-6 pb-6">
-          {/* Avatar — overlaps the banner */}
-          <div className="-mt-10 relative z-10">
+          <div className="-mt-12 relative z-10 flex items-end gap-4">
             {pagePhotoUrl ? (
               <img
                 src={pagePhotoUrl}
                 alt={`${pageUser?.prenom || ''} ${pageUser?.nom || ''}`.trim() || 'Profile'}
-                className="shrink-0 w-20 h-20 rounded-full object-cover border-4 border-surface shadow-card"
+                className="w-24 h-24 rounded-full object-cover border-4 border-surface shadow-card bg-surface"
                 onError={(event) => {
                   event.currentTarget.onerror = null;
                   event.currentTarget.src = '/Logo.png';
                 }}
               />
             ) : (
-              <div className="shrink-0 w-20 h-20 rounded-full bg-brand-light border-4 border-surface flex items-center justify-center shadow-card">
+              <div className="w-24 h-24 rounded-full bg-brand-light border-4 border-surface flex items-center justify-center shadow-card">
                 <span className="text-2xl font-bold text-brand">{pageInitials}</span>
               </div>
             )}
           </div>
-          {/* Name & role — below the avatar, clear of the banner */}
-          <div className="mt-3 min-w-0">
-            <h2 className="text-lg font-bold text-ink tracking-tight">
+
+          <div className="mt-4">
+            <h2 className="text-xl font-bold text-ink tracking-tight">
               {pageUser?.prenom} {pageUser?.nom}
             </h2>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="px-2 py-0.5 text-[11px] font-medium rounded bg-brand/5 text-brand capitalize">
+            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand capitalize">
+                <Shield className="w-3 h-3" />
                 {pageRolePretty}
               </span>
-              <span className="text-sm text-ink-secondary">{pageDepartment}</span>
+              {pageDepartment && pageDepartment !== '—' && (
+                <span className="text-sm text-ink-secondary">{pageDepartment}</span>
+              )}
+            </div>
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                Active
+              </span>
+              <span className="text-xs text-ink-muted">
+                Member since {formatDate(pageUser?.createdAt)}
+              </span>
             </div>
           </div>
-
-          {/* Status badge */}
-          <div className="mt-4 flex items-center gap-2">
-            <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-success/5 text-success">
-              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-              Active
-            </span>
-            <span className="text-xs text-ink-muted">
-              Member since {formatDate(pageUser?.createdAt)}
-            </span>
-          </div>
         </div>
+      </section>
+
+      {/* ── Two-column info ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <InfoCard title="Academic Information" Icon={GraduationCap}>
+          <InfoRow Icon={Shield} label="Role" value={pageRolePretty} />
+          <InfoRow Icon={Building2} label="Department" value={pageDepartment} />
+          {(student || isViewingSelectedStudent) && (
+            <InfoRow Icon={GraduationCap} label="Speciality" value={pageSpeciality} />
+          )}
+          <InfoRow
+            Icon={CheckCircle2}
+            label="Email Verified"
+            value={pageUser?.emailVerified ? 'Yes' : 'Not yet'}
+          />
+          <InfoRow Icon={Calendar} label="Last Login" value={formatDate(pageUser?.lastLogin)} />
+        </InfoCard>
+
+        <InfoCard title="Contact" Icon={Mail}>
+          <InfoRow Icon={Mail} label="Email" value={pageUser?.email} hint="Read-only — managed by admin" />
+          <InfoRow
+            Icon={Phone}
+            label="Phone"
+            value={pageUser?.telephone || '—'}
+            hint={canEdit ? 'You can update your phone number.' : null}
+          />
+          <InfoRow
+            Icon={Calendar}
+            label="Account Created"
+            value={formatDate(pageUser?.createdAt)}
+          />
+        </InfoCard>
       </div>
 
-      {/* ── Two Column: Academic Info + Contact ─────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── Edit modal ──────────────────────────────────────── */}
+      {editOpen && canEdit && (
+        <EditProfileModal
+          user={user}
+          onClose={() => setEditOpen(false)}
+          onSaved={async () => {
+            await fetchUser();
+            setEditOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
-        {/* Academic Information */}
-        <div className="bg-surface rounded-lg border border-edge shadow-card">
-          <div className="px-6 py-4 border-b border-edge-subtle flex items-center gap-2">
-            <svg className="w-5 h-5 text-ink-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
-            </svg>
-            <h2 className="text-base font-semibold text-ink">Academic Information</h2>
-          </div>
-          <div className="px-6 py-2 divide-y divide-edge-subtle">
-            <InfoRow label="Role" value={pageRolePretty} icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
-            } />
-            <InfoRow label="Department" value={pageDepartment} icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21" /></svg>
-            } />
-            {(student || isViewingSelectedStudent) && (
-              <InfoRow label="Speciality" value={pageSpeciality} icon={
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342" /></svg>
-              } />
-            )}
-            <InfoRow label="Email Verified" value={pageUser?.emailVerified ? 'Yes' : 'Not yet'} icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            } />
-            <InfoRow label="Last Login" value={formatDate(pageUser?.lastLogin)} icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            } />
-          </div>
-        </div>
+/* ── Info bits ─────────────────────────────────────────────── */
+function InfoCard({ title, Icon, children }) {
+  return (
+    <section className="bg-surface rounded-2xl border border-edge shadow-card">
+      <header className="px-6 py-4 border-b border-edge-subtle flex items-center gap-2">
+        {Icon && <Icon className="w-5 h-5 text-ink-tertiary" />}
+        <h2 className="text-base font-semibold text-ink">{title}</h2>
+      </header>
+      <div className="px-6 py-2 divide-y divide-edge-subtle">{children}</div>
+    </section>
+  );
+}
 
-        {/* Contact Information */}
-        <div className="bg-surface rounded-lg border border-edge shadow-card">
-          <div className="px-6 py-4 border-b border-edge-subtle flex items-center gap-2">
-            <svg className="w-5 h-5 text-ink-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-            </svg>
-            <h2 className="text-base font-semibold text-ink">Contact</h2>
-          </div>
-          <div className="px-6 py-2 divide-y divide-edge-subtle">
-            <InfoRow label="Email" value={pageUser?.email} icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
-            } />
-            <InfoRow label="Full Name" value={`${pageUser?.prenom || ''} ${pageUser?.nom || ''}`.trim()} icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
-            } />
-            <InfoRow label="Account Created" value={formatDate(pageUser?.createdAt)} icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
-            } />
-          </div>
-        </div>
+function InfoRow({ Icon, label, value, hint }) {
+  return (
+    <div className="flex items-start gap-3 py-3">
+      {Icon && <Icon className="w-4 h-4 text-ink-tertiary shrink-0 mt-0.5" />}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-ink-muted">{label}</p>
+        <p className="text-sm font-medium text-ink mt-0.5 break-words">{value || '—'}</p>
+        {hint && <p className="text-xs text-ink-tertiary mt-0.5">{hint}</p>}
       </div>
     </div>
   );
 }
 
+/* ── Edit modal ────────────────────────────────────────────── */
+function EditProfileModal({ user, onClose, onSaved }) {
+  const initialPhone = user?.telephone || '';
+  const [phone, setPhone] = useState(initialPhone);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
+  const [savingPhoto, setSavingPhoto] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const fileInputRef = useRef(null);
+
+  const phoneTrimmed = phone.trim();
+  const phoneChanged = phoneTrimmed !== (initialPhone || '').trim();
+  const phoneValid = phoneTrimmed === '' || PHONE_PATTERN.test(phoneTrimmed);
+  const hasPendingChanges = phoneChanged || Boolean(photoFile);
+  const saving = savingPhone || savingPhoto;
+  const canSave = hasPendingChanges && phoneValid && !saving;
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreview('');
+      return undefined;
+    }
+    const url = URL.createObjectURL(photoFile);
+    setPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photoFile]);
+
+  const onPickPhoto = (event) => {
+    setError('');
+    const file = event.target?.files?.[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|jpg|png|webp)$/i.test(file.type)) {
+      setError('Only JPG, PNG or WebP images are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image cannot exceed 5 MB.');
+      return;
+    }
+    setPhotoFile(file);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!canSave) return;
+
+    setError('');
+    setSuccess('');
+    setPhoneError('');
+
+    if (!phoneValid) {
+      setPhoneError('Phone format looks invalid.');
+      return;
+    }
+
+    try {
+      if (photoFile) {
+        setSavingPhoto(true);
+        await authAPI.uploadProfilePhoto(photoFile);
+        setSavingPhoto(false);
+      }
+      if (phoneChanged) {
+        setSavingPhone(true);
+        await authAPI.updateMyProfile({ telephone: phoneTrimmed || null });
+        setSavingPhone(false);
+      }
+      setSuccess('Profile updated successfully');
+      await onSaved();
+    } catch (err) {
+      setSavingPhone(false);
+      setSavingPhoto(false);
+      setError(err?.message || 'Failed to update profile.');
+    }
+  };
+
+  const initial = `${(user?.prenom || '?')[0]}${(user?.nom || '?')[0]}`.toUpperCase();
+  const currentPhotoUrl = photoPreview || resolveMediaUrl(user?.photo) || '';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="relative bg-surface rounded-2xl shadow-card border border-edge w-full max-w-lg"
+      >
+        <header className="flex items-center justify-between px-6 py-4 border-b border-edge">
+          <h2 className="text-lg font-semibold text-ink">Edit profile</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 -mr-1.5 text-ink-tertiary hover:text-ink hover:bg-surface-200 rounded-lg"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </header>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Avatar uploader */}
+          <div className="flex items-center gap-4">
+            {currentPhotoUrl ? (
+              <img
+                src={currentPhotoUrl}
+                alt="Profile preview"
+                className="w-20 h-20 rounded-full object-cover border-2 border-edge"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-brand-light border-2 border-edge flex items-center justify-center">
+                <span className="text-xl font-bold text-brand">{initial}</span>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm font-medium text-ink-secondary hover:bg-surface-200"
+              >
+                <Camera className="w-4 h-4" />
+                {photoFile ? 'Change selection' : 'Upload photo'}
+              </button>
+              <p className="text-xs text-ink-tertiary">JPG, PNG or WebP — max 5 MB.</p>
+              {photoFile && (
+                <button
+                  type="button"
+                  onClick={() => setPhotoFile(null)}
+                  className="text-xs text-danger hover:underline"
+                >
+                  Discard new photo
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={onPickPhoto}
+              />
+            </div>
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label htmlFor="profile-phone" className="block text-xs font-semibold text-ink-secondary mb-1.5 uppercase tracking-wide">
+              Phone number
+            </label>
+            <input
+              id="profile-phone"
+              type="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                if (phoneError) setPhoneError('');
+              }}
+              placeholder="+213 555 12 34 56"
+              className={`w-full rounded-lg border px-3 py-2 text-sm text-ink outline-none transition focus:ring-2 ${
+                phoneValid
+                  ? 'border-edge focus:border-brand focus:ring-brand/30'
+                  : 'border-danger focus:border-danger focus:ring-danger/30'
+              }`}
+            />
+            {phoneError && <p className="text-xs text-danger mt-1">{phoneError}</p>}
+            {!phoneError && !phoneValid && (
+              <p className="text-xs text-danger mt-1">Phone format looks invalid.</p>
+            )}
+          </div>
+
+          {/* Read-only fields */}
+          <div className="rounded-lg bg-surface-200/60 px-4 py-3 space-y-1.5">
+            <div className="flex justify-between text-xs">
+              <span className="text-ink-tertiary">Email</span>
+              <span className="font-medium text-ink-secondary">{user?.email}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-ink-tertiary">Full name</span>
+              <span className="font-medium text-ink-secondary">
+                {`${user?.prenom || ''} ${user?.nom || ''}`.trim()}
+              </span>
+            </div>
+            <p className="text-[11px] text-ink-muted pt-1">
+              Email and full name are managed by the administration.
+            </p>
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg bg-danger/5 border border-danger/30 px-3 py-2 text-sm text-danger">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+          {success && (
+            <div className="flex items-start gap-2 rounded-lg bg-success/5 border border-success/30 px-3 py-2 text-sm text-success">
+              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{success}</span>
+            </div>
+          )}
+        </div>
+
+        <footer className="flex items-center justify-end gap-2 px-6 py-4 border-t border-edge bg-surface-200/30 rounded-b-2xl">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-ink-secondary hover:bg-surface-200 rounded-lg transition-colors"
+            disabled={saving}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!canSave}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-surface bg-brand rounded-lg hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            Save changes
+          </button>
+        </footer>
+      </form>
+    </div>
+  );
+}
