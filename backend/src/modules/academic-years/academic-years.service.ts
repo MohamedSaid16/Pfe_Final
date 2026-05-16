@@ -77,6 +77,8 @@ export const getAcademicHierarchy = async (filter?: {
               nom_ar: true,
               nom_en: true,
               niveau: true,
+              // Legacy module catalog. Used as a fallback only — modules
+              // already migrated to a specific promo are excluded below.
               modules: {
                 select: {
                   id: true,
@@ -86,10 +88,25 @@ export const getAcademicHierarchy = async (filter?: {
                   semestre: true,
                   credit: true,
                   coef: true,
+                  promoId: true,
                 },
                 orderBy: [{ semestre: "asc" }, { nom_ar: "asc" }],
               },
             },
+          },
+          // NEW: modules that live directly inside this promo (preferred path).
+          modules: {
+            select: {
+              id: true,
+              code: true,
+              nom_ar: true,
+              nom_en: true,
+              semestre: true,
+              credit: true,
+              coef: true,
+              promoId: true,
+            },
+            orderBy: [{ semestre: "asc" }, { nom_ar: "asc" }],
           },
           _count: { select: { etudiants: true } },
         },
@@ -128,7 +145,26 @@ export const getAcademicHierarchy = async (filter?: {
       }
 
       const promos = year.promos.map((promo) => {
-        const modules = (promo.specialite?.modules ?? []).map((module) => {
+        // Module list for this promo:
+        //   1. Modules directly attached via Module.promoId (the new way).
+        //   2. PLUS legacy modules attached only to the specialité (i.e.
+        //      promoId is null) — these still show under every promo of that
+        //      specialité until manually migrated. Already-migrated modules
+        //      are filtered out to avoid showing them under the wrong promo.
+        const directModules = promo.modules ?? [];
+        const legacyShared = (promo.specialite?.modules ?? []).filter(
+          (m) => m.promoId == null
+        );
+        // De-dupe by id (safety belt — directModules already excludes legacy ones).
+        const seen = new Set<number>();
+        const moduleList: typeof directModules = [];
+        for (const m of [...directModules, ...legacyShared]) {
+          if (seen.has(m.id)) continue;
+          seen.add(m.id);
+          moduleList.push(m);
+        }
+
+        const modules = moduleList.map((module) => {
           const key = `${promo.id}-${module.id}`;
           const slots = (byPromoModule.get(key) ?? []).map((en) => ({
             id: en.id,

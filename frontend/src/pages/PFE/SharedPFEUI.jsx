@@ -1,11 +1,325 @@
-import React from 'react';
-import { WifiOff, Lock, AlertTriangle, RefreshCcw, Shield, ChevronRight, FileText, BarChart3, Clock, CheckCircle2, Users, Activity, Zap, TrendingUp } from 'lucide-react';
+import React, { useState } from 'react';
+import { WifiOff, Lock, AlertTriangle, RefreshCcw, Shield, ChevronRight, FileText, BarChart3, Clock, CheckCircle2, Users, Activity, Zap, TrendingUp, X, Loader2, Save } from 'lucide-react';
+import request from '../../services/api';
 
 export const getUserDisplayName = (user) => {
   if (!user) return 'Unassigned';
   const fullName = `${user.prenom || ''} ${user.nom || ''}`.trim();
   return fullName || user.email || 'Unassigned';
 };
+
+/* ── EditSubjectModal — shared between Admin & Teacher ──────────────── */
+export function EditSubjectModal({ subject, onClose, onSaved }) {
+  const [formData, setFormData] = useState({
+    titre_ar:       subject?.titre_ar       || '',
+    titre_en:       subject?.titre_en       || '',
+    description_ar: subject?.description_ar || '',
+    description_en: subject?.description_en || '',
+    typeProjet:     subject?.typeProjet     || 'application',
+    maxGrps:        subject?.maxGrps        || 1,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  if (!subject) return null;
+
+  const handleSave = async () => {
+    setError(null);
+    if (!formData.titre_ar?.trim() && !formData.titre_en?.trim()) {
+      setError('At least one title (Arabic or English) is required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await request(`/api/v1/pfe/sujets/${subject.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          titre_ar:       formData.titre_ar.trim(),
+          titre_en:       formData.titre_en.trim() || null,
+          description_ar: formData.description_ar.trim(),
+          description_en: formData.description_en.trim() || null,
+          typeProjet:     formData.typeProjet,
+          maxGrps:        Number(formData.maxGrps) || 1,
+        }),
+      });
+      if (onSaved) await onSaved();
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Failed to save subject.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-edge"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-5 border-b border-edge flex items-center justify-between bg-surface-200/50">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Edit Subject</h3>
+            <p className="text-xs text-ink-tertiary">Subject #{subject.id} · {subject.status}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="p-2 rounded-xl hover:bg-surface-300 transition-colors disabled:opacity-50"
+          >
+            <X className="w-5 h-5 text-ink-muted" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          {error && (
+            <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary uppercase mb-1.5">
+                Title (Arabic)
+              </label>
+              <input
+                type="text"
+                value={formData.titre_ar}
+                onChange={(e) => setFormData((p) => ({ ...p, titre_ar: e.target.value }))}
+                className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary uppercase mb-1.5">
+                Title (English)
+              </label>
+              <input
+                type="text"
+                value={formData.titre_en}
+                onChange={(e) => setFormData((p) => ({ ...p, titre_en: e.target.value }))}
+                className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary uppercase mb-1.5">
+                Description (Arabic)
+              </label>
+              <textarea
+                rows={4}
+                value={formData.description_ar}
+                onChange={(e) => setFormData((p) => ({ ...p, description_ar: e.target.value }))}
+                className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 resize-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary uppercase mb-1.5">
+                Description (English)
+              </label>
+              <textarea
+                rows={4}
+                value={formData.description_en}
+                onChange={(e) => setFormData((p) => ({ ...p, description_en: e.target.value }))}
+                className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary uppercase mb-1.5">
+                Project Type
+              </label>
+              <select
+                value={formData.typeProjet}
+                onChange={(e) => setFormData((p) => ({ ...p, typeProjet: e.target.value }))}
+                className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              >
+                <option value="application">Application</option>
+                <option value="recherche">Recherche</option>
+                <option value="etude">Étude</option>
+                <option value="innovation">Innovation</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-ink-secondary uppercase mb-1.5">
+                Max Groups
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={formData.maxGrps}
+                onChange={(e) => setFormData((p) => ({ ...p, maxGrps: e.target.value }))}
+                className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-edge-subtle flex justify-end gap-2 bg-surface-200/30">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-edge bg-surface text-ink hover:bg-surface-200 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-xl bg-brand text-surface hover:bg-brand-hover disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? 'Saving...' : 'Save changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── EditGroupModal — admin only, edits any group at any time ──────────── */
+export function EditGroupModal({ group, onClose, onSaved }) {
+  const [formData, setFormData] = useState({
+    nom_ar: group?.nom_ar || '',
+    nom_en: group?.nom_en || '',
+    coEncadrantId: group?.coEncadrantId ? String(group.coEncadrantId) : '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  if (!group) return null;
+
+  const handleSave = async () => {
+    setError(null);
+    setSaving(true);
+    try {
+      const payload = {
+        nom_ar: formData.nom_ar.trim(),
+        nom_en: formData.nom_en.trim(),
+      };
+      // coEncadrantId: empty string → set to null (clear). Otherwise → number.
+      if (formData.coEncadrantId === '') {
+        payload.coEncadrantId = null;
+      } else if (!Number.isNaN(Number(formData.coEncadrantId))) {
+        payload.coEncadrantId = Number(formData.coEncadrantId);
+      }
+
+      await request(`/api/v1/pfe/groupes/${group.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      if (onSaved) await onSaved();
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Failed to save group.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-edge"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 border-b border-edge flex items-center justify-between bg-surface-200/50">
+          <div>
+            <h3 className="text-lg font-bold text-ink">Edit Group</h3>
+            <p className="text-xs text-ink-tertiary">Group #{group.id}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="p-2 rounded-xl hover:bg-surface-300 transition-colors disabled:opacity-50"
+          >
+            <X className="w-5 h-5 text-ink-muted" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {error && (
+            <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+              {error}
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-semibold text-ink-secondary uppercase mb-1.5">
+              Group name (Arabic)
+            </label>
+            <input
+              type="text"
+              value={formData.nom_ar}
+              onChange={(e) => setFormData((p) => ({ ...p, nom_ar: e.target.value }))}
+              className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink-secondary uppercase mb-1.5">
+              Group name (English)
+            </label>
+            <input
+              type="text"
+              value={formData.nom_en}
+              onChange={(e) => setFormData((p) => ({ ...p, nom_en: e.target.value }))}
+              className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink-secondary uppercase mb-1.5">
+              Co-supervisor ID <span className="font-normal text-ink-muted normal-case">(leave empty to clear)</span>
+            </label>
+            <input
+              type="number"
+              placeholder="Teacher ID, e.g. 12"
+              value={formData.coEncadrantId}
+              onChange={(e) => setFormData((p) => ({ ...p, coEncadrantId: e.target.value }))}
+              className="w-full rounded-xl border border-edge-subtle bg-control-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            />
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-edge-subtle flex justify-end gap-2 bg-surface-200/30">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-edge bg-surface text-ink hover:bg-surface-200 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-xl bg-brand text-surface hover:bg-brand-hover disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? 'Saving...' : 'Save changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function normalizeApiError(err) {
   if (!err) return { kind: 'unknown', message: 'Unknown error' };

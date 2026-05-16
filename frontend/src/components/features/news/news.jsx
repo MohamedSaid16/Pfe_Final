@@ -562,10 +562,11 @@ function UrgentAnnouncementsCarousel({ items, isMobile }) {
   );
 }
 
-function EmptyUrgentState({ isMobile }) {
+function EmptyUrgentState({ isMobile, isAdmin, onAdd }) {
   return (
     <div
       style={{
+        position: 'relative',
         borderRadius: isMobile ? '16px' : '12px',
         border: '2px dashed var(--color-edge)',
         background: 'var(--color-surface)',
@@ -573,6 +574,48 @@ function EmptyUrgentState({ isMobile }) {
         textAlign: 'center',
       }}
     >
+      {/* Admin: Add-news button anchored top-right of the empty state */}
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={onAdd}
+          title="Create a new announcement"
+          aria-label="Add news"
+          style={{
+            position: 'absolute',
+            top: isMobile ? '10px' : '12px',
+            right: isMobile ? '10px' : '12px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: isMobile ? '6px 10px' : '7px 12px',
+            borderRadius: '999px',
+            border: '1px solid var(--color-brand)',
+            background: 'var(--color-brand)',
+            color: 'var(--color-surface)',
+            fontSize: isMobile ? '12px' : '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px -4px rgba(0,0,0,0.25)',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 6px 16px -4px rgba(0,0,0,0.3)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 12px -4px rgba(0,0,0,0.25)';
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add News
+        </button>
+      )}
+
       <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--color-ink-tertiary)" strokeWidth="1.5" style={{ margin: '0 auto 14px' }}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
@@ -1270,7 +1313,17 @@ function ExpandedAnnouncement({ item, onClose, isMobile }) {
 
 export default function News() {
   const { user } = useAuth();
-  const isAdmin = useMemo(() => Array.isArray(user?.roles) && user.roles.includes('admin'), [user]);
+  const isAdmin = useMemo(() => {
+    if (!user) return false;
+    if (String(user.coreRole || '').toLowerCase() === 'admin') return true;
+    if (Array.isArray(user.roles)) {
+      return user.roles.some((r) => {
+        const name = typeof r === 'string' ? r : (r?.nom || r?.name || '');
+        return String(name).toLowerCase() === 'admin';
+      });
+    }
+    return String(user.role || '').toLowerCase() === 'admin';
+  }, [user]);
   const isMobile = useIsMobile(640);
 
   const [annonces, setAnnonces] = useState([]);
@@ -1364,23 +1417,28 @@ export default function News() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!formData.titre.trim() || !formData.contenu.trim()) {
-      window.alert('Title and content are required.');
+    // Read fresh values & validate ONCE, with clear field messages.
+    const titre = (formData.titre || '').trim();
+    const contenu = (formData.contenu || '').trim();
+    const errors = [];
+    if (!titre)   errors.push('Title is required.');
+    if (!contenu) errors.push('Content is required.');
+    if (errors.length) {
+      window.alert(errors.join('\n'));
       return;
     }
 
     try {
       const payload = new FormData();
-      payload.append('titre', formData.titre);
-      payload.append('contenu', formData.contenu);
-      payload.append('typeAnnonce', formData.typeAnnonce);
-      payload.append('priority', formData.priority);
-      payload.append('target', formData.target);
-payload.append('contenu', formData.contenu);
-payload.append('typeAnnonce', formData.typeAnnonce);
-payload.append('priority', formData.priority);
-payload.append('cible', formData.cible || 'tous');
-      payload.append('cible', formData.cible || formData.target || 'tous');
+      // Each field appended exactly ONCE — multer/express only reads the last
+      // value when keys repeat, which silently masked the fields before.
+      payload.append('titre',       titre);
+      payload.append('contenu',     contenu);
+      payload.append('typeAnnonce', formData.typeAnnonce || 'Administrative');
+      payload.append('priority',    formData.priority    || 'normal');
+      // Backend reads `cible` (DB column) first, falls back to `visibility`.
+      // Older form state may still have `target` — accept either, default to 'tous'.
+      payload.append('cible',       formData.cible || formData.target || 'tous');
 
       selectedFiles.forEach((file) => {
         payload.append('files', file);
@@ -1586,7 +1644,11 @@ payload.append('cible', formData.cible || 'tous');
           {urgentAnnonces.length > 0 ? (
             <UrgentAnnouncementsCarousel items={urgentAnnonces} isMobile={isMobile} />
           ) : (
-            <EmptyUrgentState isMobile={isMobile} />
+            <EmptyUrgentState
+              isMobile={isMobile}
+              isAdmin={isAdmin}
+              onAdd={() => { resetForm(); setShowModal(true); }}
+            />
           )}
         </section>
 

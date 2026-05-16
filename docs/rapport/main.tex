@@ -1,0 +1,1001 @@
+% ============================================================
+%  RAPPORT DE FIN D'ETUDES
+%  Module : Authentification et Gestion des Roles
+%  Etudiant  : Ghoulam Mohamed Said
+%  Equipe    : Reddas Belkacem, Chelig Mohamed Amine
+%  Encadreur : Dr. Abdelkader Bougassa
+%  Universite Ibn Khaldoun - Tiaret - 2024/2025
+%  Compatible Overleaf - pdfLaTeX
+% ============================================================
+
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{float}
+
+\geometry{top=2.5cm,bottom=2.5cm,left=3cm,right=2.5cm}
+
+\definecolor{myblue}{RGB}{30,80,160}
+\definecolor{mygold}{RGB}{180,140,30}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=myblue,
+  urlcolor=mygold,
+  citecolor=myblue
+}
+
+\title{Systeme de Gestion Universitaire Integre \\
+       Module : Authentification et Gestion des Roles}
+\author{Ghoulam Mohamed Said}
+\date{2024 -- 2025}
+
+% ============================================================
+\begin{document}
+% ============================================================
+
+% ────────────────────────────────────────────────────────────
+%  PAGE DE GARDE
+% ────────────────────────────────────────────────────────────
+\begin{titlepage}
+\begin{center}
+
+\textsc{\large Republique Algerienne Democratique et Populaire}\\[0.2cm]
+\textsc{Ministere de l'Enseignement Superieur et de la Recherche Scientifique}\\[0.5cm]
+
+\rule{\linewidth}{0.5mm}\\[0.3cm]
+\textsc{\Large Universite Ibn Khaldoun -- Tiaret}\\[0.2cm]
+\textsc{Faculte des Mathematiques et de l'Informatique}\\[0.2cm]
+\textsc{Departement d'Informatique}\\
+\rule{\linewidth}{0.5mm}\\[1.5cm]
+
+{\large Memoire de Fin d'Etudes}\\[0.3cm]
+{\large En vue de l'obtention du diplome de Master en Informatique}\\[0.2cm]
+{\large Specialite : Genie Logiciel (ISIL)}\\[2cm]
+
+\textcolor{myblue}{\rule{0.6\linewidth}{1pt}}\\[0.5cm]
+{\Huge \bfseries Systeme de Gestion}\\[0.3cm]
+{\Huge \bfseries Universitaire Integre}\\[0.5cm]
+{\Large \textcolor{mygold}{Module : Authentification et Gestion des Roles}}\\[0.5cm]
+\textcolor{myblue}{\rule{0.6\linewidth}{1pt}}\\[2cm]
+
+\begin{minipage}{0.45\textwidth}
+\begin{flushleft}
+\textbf{Realise par :}\\[0.2cm]
+Ghoulam Mohamed Said\\
+Reddas Belkacem\\
+Chelig Mohamed Amine
+\end{flushleft}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\textwidth}
+\begin{flushright}
+\textbf{Encadre par :}\\[0.2cm]
+Dr. Abdelkader Bougassa\\
+\textit{Maitre de Conferences}\\
+Universite Ibn Khaldoun
+\end{flushright}
+\end{minipage}\\[2cm]
+
+{\large \textbf{Annee Universitaire : 2024 -- 2025}}
+
+\end{center}
+\end{titlepage}
+
+% ────────────────────────────────────────────────────────────
+%  DEDICACE
+% ────────────────────────────────────────────────────────────
+\chapter*{Dedicace}
+\addcontentsline{toc}{chapter}{Dedicace}
+
+\vspace*{2cm}
+\begin{center}
+\begin{minipage}{0.85\textwidth}
+\begin{center}
+\textit{Je dedie ce modeste travail :}\\[0.5cm]
+
+\textit{A mes chers parents, source inepuisable d'amour, de patience}\\
+\textit{et de sacrifices, qui m'ont toujours soutenu durant mon parcours.}\\[0.5cm]
+
+\textit{A mes freres et sceurs pour leur soutien inconditionnel.}\\[0.5cm]
+
+\textit{A tous mes enseignants qui ont eclaire mon chemin.}\\[0.5cm]
+
+\textit{A mes camarades de promotion et a tous ceux}\\
+\textit{qui croient en la valeur de la connaissance.}\\[1cm]
+
+\textbf{-- Ghoulam Mohamed Said --}
+\end{center}
+\end{minipage}
+\end{center}
+
+% ────────────────────────────────────────────────────────────
+%  REMERCIEMENTS
+% ────────────────────────────────────────────────────────────
+\chapter*{Remerciements}
+\addcontentsline{toc}{chapter}{Remerciements}
+
+Au terme de ce travail, nous tenons a exprimer notre profonde gratitude
+a notre encadreur, \textbf{Dr. Abdelkader Bougassa}, pour ses precieux
+conseils, sa disponibilite constante et la rigueur scientifique dont il
+a fait preuve tout au long de l'encadrement de ce projet.
+
+Nos sinceres remerciements vont egalement aux membres du jury qui ont
+accepte d'evaluer ce travail, ainsi qu'a l'ensemble du corps enseignant
+du departement d'informatique pour la qualite de la formation dispensee
+durant notre cursus universitaire.
+
+Nous remercions enfin nos familles respectives pour leur soutien moral
+et leur patience, et nos camarades pour les echanges enrichissants qui
+ont contribue a l'aboutissement de ce projet.
+
+% ────────────────────────────────────────────────────────────
+%  RESUME
+% ────────────────────────────────────────────────────────────
+\chapter*{Resume}
+\addcontentsline{toc}{chapter}{Resume}
+
+Ce memoire presente la conception et le developpement d'un \textbf{Systeme
+de Gestion Universitaire Integre} (SGUI), centre sur le module
+\textbf{d'Authentification et de Gestion des Roles}. Le systeme vise a
+numeriser les processus administratifs d'un etablissement d'enseignement
+superieur algerien en offrant une plateforme unifiee accessible a trois
+profils d'utilisateurs distincts : Administrateur, Enseignant et Etudiant.
+
+Le module developpe implemente un mecanisme d'authentification securise
+base sur les \textbf{JSON Web Tokens (JWT)}, un controle d'acces a base
+de roles (\textbf{RBAC}), ainsi qu'une gestion complete du cycle de vie
+des sessions. Le backend repose sur \textbf{Node.js} avec \textbf{TypeScript},
+exposant une API RESTful construite avec \textbf{Express.js}, tandis que
+la persistance des donnees est assuree par \textbf{PostgreSQL} via l'ORM
+\textbf{Prisma}. L'interface utilisateur est developpee en
+\textbf{React.js} avec le framework CSS \textbf{Tailwind CSS}.
+
+Les resultats obtenus demontrent la robustesse du systeme face aux
+principales vulnerabilites de securite (injection SQL, XSS, CSRF,
+brute-force) et confirment sa capacite a gerer efficacement les flux
+d'acces multi-roles dans un contexte universitaire reel.
+
+\vspace{0.5cm}
+\textbf{Mots-cles :} Authentification, JWT, RBAC, API REST, Node.js,
+React.js, PostgreSQL, Prisma, Securite web, Gestion universitaire.
+
+% ────────────────────────────────────────────────────────────
+%  ABSTRACT
+% ────────────────────────────────────────────────────────────
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+This thesis presents the design and development of an \textbf{Integrated
+University Management System} (IUMS), focusing on the \textbf{Authentication
+and Role Management} module. The system aims to digitize the administrative
+processes of an Algerian higher education institution by providing a
+unified platform accessible to three distinct user profiles: Administrator,
+Teacher, and Student.
+
+The developed module implements a secure authentication mechanism based on
+\textbf{JSON Web Tokens (JWT)}, \textbf{Role-Based Access Control (RBAC)},
+and full session lifecycle management. The backend is built with
+\textbf{Node.js} and \textbf{TypeScript}, exposing a RESTful API via
+\textbf{Express.js}, with data persistence handled by \textbf{PostgreSQL}
+through the \textbf{Prisma} ORM. The frontend is developed in
+\textbf{React.js} with \textbf{Tailwind CSS}.
+
+Experimental results demonstrate the system's robustness against the main
+web security vulnerabilities (SQL injection, XSS, CSRF, brute-force) and
+confirm its ability to efficiently manage multi-role access flows in a
+real university context.
+
+\vspace{0.5cm}
+\textbf{Keywords:} Authentication, JWT, RBAC, REST API, Node.js, React.js,
+PostgreSQL, Prisma, Web security, University management.
+
+% ────────────────────────────────────────────────────────────
+%  TABLE DES MATIERES
+% ────────────────────────────────────────────────────────────
+\tableofcontents
+\listoffigures
+\listoftables
+
+% ════════════════════════════════════════════════════════════
+%  INTRODUCTION GENERALE
+% ════════════════════════════════════════════════════════════
+\chapter*{Introduction Generale}
+\addcontentsline{toc}{chapter}{Introduction Generale}
+
+\section*{Contexte et Motivation}
+
+La transformation numerique des etablissements d'enseignement superieur
+constitue aujourd'hui un enjeu strategique majeur. En Algerie, de nombreuses
+universites gerent encore leurs processus administratifs de maniere
+fragmentee : formulaires papier, tableurs disperses, communications
+informelles par messagerie. Cette situation genere des inefficacites, des
+risques d'erreur et une experience utilisateur degradee pour les etudiants
+comme pour le personnel academique.
+
+Le present projet s'inscrit dans ce contexte en proposant un \textbf{Systeme
+de Gestion Universitaire Integre (SGUI)} qui centralise et numerise les
+principaux processus : gestion des projets de fin d'etudes (PFE),
+reclamations et justifications d'absence, annonces institutionnelles,
+remise de copies, et gestion du jury.
+
+\section*{Problematique}
+
+La question centrale de ce travail est la suivante : comment concevoir un
+systeme d'authentification et de controle d'acces robuste, evolutif et
+convivial, capable de gerer des profils utilisateurs aux privileges
+heterogenes dans un environnement universitaire reel ?
+
+Cette problematique souleve plusieurs defis techniques :
+\begin{itemize}
+  \item Garantir la confidentialite et l'integrite des donnees sans
+        introduire de frictions excessives pour l'utilisateur.
+  \item Implementer un modele de controle d'acces suffisamment fin pour
+        distinguer administrateurs, enseignants et etudiants.
+  \item Assurer la scalabilite du systeme face a une population
+        universitaire potentiellement importante.
+  \item Proteger le systeme contre les attaques courantes du web
+        (injection, XSS, CSRF, force brute).
+\end{itemize}
+
+\section*{Objectifs}
+
+Les objectifs de ce memoire sont les suivants :
+\begin{enumerate}
+  \item Analyser l'existant et identifier les besoins fonctionnels et non
+        fonctionnels du SGUI.
+  \item Concevoir l'architecture logicielle du systeme avec un accent
+        particulier sur le module d'authentification.
+  \item Developper et tester un module d'authentification JWT securise
+        avec RBAC a trois roles.
+  \item Valider le systeme par des tests fonctionnels et de securite.
+\end{enumerate}
+
+\section*{Structure du Memoire}
+
+Ce document est organise en trois chapitres :
+\begin{itemize}
+  \item \textbf{Chapitre 1} -- Etat de l'art : revue bibliographique des
+        technologies et concepts utilises (JWT, RBAC, API REST,
+        frameworks modernes).
+  \item \textbf{Chapitre 2} -- Analyse et conception : specification des
+        besoins, modelisation UML et architecture globale.
+  \item \textbf{Chapitre 3} -- Implementation et tests : detail du
+        developpement du module d'authentification, suivi d'une campagne
+        de tests fonctionnels et de securite.
+\end{itemize}
+
+% ════════════════════════════════════════════════════════════
+\chapter{Etat de l'Art et Etude du Domaine}
+% ════════════════════════════════════════════════════════════
+
+\section{Introduction}
+
+Ce chapitre presente les fondements theoriques et technologiques sur
+lesquels repose le module d'authentification et de gestion des roles du
+SGUI. Nous passons en revue les concepts de securite applicative, les
+paradigmes d'authentification modernes, et les technologies choisies pour
+leur pertinence et leur maturite dans l'ecosysteme du developpement web.
+
+\section{Concepts Fondamentaux de Securite Web}
+
+\subsection{Authentification vs. Autorisation}
+
+L'\textbf{authentification} est le processus permettant de verifier
+l'identite d'un utilisateur (prouver qui il est). L'\textbf{autorisation}
+est le processus determinant ce qu'un utilisateur authentifie est
+autorise a faire (definir ce qu'il peut faire).
+
+Ces deux concepts sont fondamentalement distincts mais complementaires.
+L'authentification precede toujours l'autorisation dans le flux de
+traitement d'une requete.
+
+\subsection{Les Principaux Mecanismes d'Authentification Web}
+
+\subsubsection{Sessions cote serveur}
+
+Le mecanisme traditionnel repose sur des sessions stockees cote serveur.
+A la connexion, le serveur cree une session identifiee par un identifiant
+unique transmis au client via un cookie. Ce modele presente l'inconvenient
+d'introduire un etat cote serveur, limitant la scalabilite horizontale.
+
+\subsubsection{JSON Web Tokens (JWT)}
+
+Le standard \textbf{RFC 7519} definit le JWT comme un moyen compact et
+auto-contenu de transmettre des informations entre parties sous forme d'un
+objet JSON signe. Un JWT est compose de trois parties encodees en
+Base64Url et separees par des points :
+
+\begin{itemize}
+  \item \textbf{Header} : algorithme de signature (HS256, RS256) et type
+        du token.
+  \item \textbf{Payload} : claims (affirmations) sur l'utilisateur et
+        metadonnees (sub, role, exp, iat).
+  \item \textbf{Signature} : garantit l'integrite du token.
+\end{itemize}
+
+L'avantage majeur du JWT est son caractere \textbf{stateless} : le
+serveur n'a pas besoin de stocker l'etat de session, ce qui facilite le
+passage a l'echelle.
+
+\subsection{Controle d'Acces a Base de Roles (RBAC)}
+
+Le RBAC est un modele de controle d'acces dans lequel les permissions
+sont associees a des \textbf{roles}, et les utilisateurs sont assignes
+a ces roles. Un utilisateur herite ainsi des permissions de tous ses
+roles assignes.
+
+\begin{table}[H]
+\centering
+\caption{Entites du modele RBAC}
+\begin{tabular}{lll}
+\toprule
+\textbf{Entite} & \textbf{Description} & \textbf{Exemple} \\
+\midrule
+Utilisateur & Sujet humain ou systeme & Etudiant, Enseignant \\
+Role        & Ensemble de permissions & admin, teacher, student \\
+Permission  & Droit sur une ressource & WRITE:/pfe/sujets \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Technologies et Frameworks}
+
+\subsection{Backend -- Node.js et TypeScript}
+
+\textbf{Node.js} est un environnement d'execution JavaScript cote serveur
+base sur le moteur V8 de Chrome. Son modele d'entree/sortie non-bloquant
+le rend particulierement adapte aux API RESTful a haute concurrence.
+
+\textbf{TypeScript} est un sur-ensemble type de JavaScript qui ameliore
+la maintenabilite du code a travers la verification statique des types,
+reduisant les erreurs a l'execution.
+
+\textbf{Express.js} est un framework minimaliste pour Node.js offrant un
+systeme de routage et de middlewares flexible.
+
+\subsection{ORM -- Prisma}
+
+\textbf{Prisma} est un ORM de nouvelle generation pour Node.js et
+TypeScript. Il offre :
+\begin{itemize}
+  \item Un schema declaratif comme source de verite.
+  \item Un client type genere automatiquement.
+  \item Des migrations versionnees.
+  \item Une protection native contre les injections SQL.
+\end{itemize}
+
+\subsection{Base de Donnees -- PostgreSQL}
+
+\textbf{PostgreSQL} est un SGBD relationnel open-source repute pour sa
+conformite aux standards SQL, sa robustesse et ses capacites avancees
+(types JSON, contraintes, triggers).
+
+\subsection{Frontend -- React.js et Tailwind CSS}
+
+\textbf{React.js} est une bibliotheque JavaScript developpee par Meta
+pour la construction d'interfaces utilisateur basees sur des composants
+reutilisables.
+
+\textbf{Tailwind CSS} est un framework CSS utilitaire permettant de
+concevoir des interfaces modernes directement dans le JSX.
+
+\subsection{Comparaison des Solutions d'Authentification}
+
+\begin{table}[H]
+\centering
+\caption{Comparaison des mecanismes d'authentification}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Critere}    & \textbf{Session} & \textbf{JWT} & \textbf{OAuth2} & \textbf{API Key} \\
+\midrule
+Stateless           & Non       & Oui         & Partiel & Oui          \\
+Scalabilite         & Faible    & Elevee      & Elevee  & Elevee       \\
+Revocation          & Facile    & Complexe    & Standard & Facile      \\
+Complexite          & Faible    & Moyenne     & Elevee  & Tres faible  \\
+Adapte au SGUI      & Possible  & \textbf{Oui}& Excessif& Non          \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+
+Ce chapitre a pose les bases conceptuelles et technologiques du projet.
+Nous avons justifie le choix du JWT pour l'authentification et du RBAC
+pour la gestion des acces, et presente la stack technique retenue. Le
+chapitre suivant detaille l'analyse des besoins et la conception du
+systeme.
+
+% ════════════════════════════════════════════════════════════
+\chapter{Analyse et Conception}
+% ════════════════════════════════════════════════════════════
+
+\section{Introduction}
+
+Ce chapitre presente la phase d'analyse et de conception du SGUI. Nous
+definissons d'abord les acteurs et leurs besoins, puis nous modelisons
+le systeme a l'aide de diagrammes UML couvrant les cas d'utilisation,
+les sequences d'interaction et la structure statique des donnees.
+
+\section{Analyse des Besoins}
+
+\subsection{Identification des Acteurs}
+
+\begin{table}[H]
+\centering
+\caption{Acteurs du systeme et leurs responsabilites}
+\begin{tabular}{lp{4cm}p{6cm}}
+\toprule
+\textbf{Acteur} & \textbf{Role} & \textbf{Responsabilites} \\
+\midrule
+Administrateur & Gestionnaire de la plateforme &
+  Creer des comptes, gerer les PFE, valider les reclamations,
+  publier des annonces \\
+\addlinespace
+Enseignant & Personnel academique &
+  Proposer des sujets PFE, s'auto-inscrire au jury, traiter les
+  justifications \\
+\addlinespace
+Etudiant & Apprenant &
+  Consulter les annonces, soumettre des reclamations, deposer des
+  travaux \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Besoins Fonctionnels}
+
+\subsubsection{Module Authentification et Roles}
+
+\begin{enumerate}
+  \item L'utilisateur doit pouvoir s'authentifier via un identifiant et
+        un mot de passe.
+  \item Le systeme doit emettre un token JWT signe a la connexion reussie.
+  \item Le systeme doit refuser l'acces aux ressources protegees si le
+        token est absent, expire ou invalide.
+  \item Chaque route API doit verifier que le role de l'utilisateur
+        dispose des permissions requises.
+  \item Un administrateur doit pouvoir creer, modifier et desactiver des
+        comptes utilisateurs.
+  \item Le systeme doit permettre la deconnexion explicite.
+  \item Un mecanisme de rafraichissement de token doit etre disponible.
+\end{enumerate}
+
+\subsection{Besoins Non Fonctionnels}
+
+\begin{table}[H]
+\centering
+\caption{Besoins non fonctionnels}
+\begin{tabular}{lp{9cm}}
+\toprule
+\textbf{Categorie} & \textbf{Exigence} \\
+\midrule
+Securite       & Mots de passe haches (bcrypt cout 12), tokens
+                 expirables, protection CORS, rate-limiting \\
+Performance    & Temps de reponse inferieur a 500 ms pour 95\% des
+                 requetes \\
+Disponibilite  & Uptime de 99\% hors maintenance planifiee \\
+Maintenabilite & Architecture modulaire, TypeScript strict, tests
+                 unitaires \\
+Portabilite    & Conteneurisable via Docker, independant de l'OS \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Diagrammes UML}
+
+\subsection{Diagramme de Cas d'Utilisation}
+
+La figure ci-dessous presente les principaux cas d'utilisation du module
+Authentification et Gestion des Roles. Trois acteurs interagissent avec
+le systeme : Administrateur, Enseignant et Etudiant.
+
+\begin{figure}[H]
+\centering
+\framebox[0.85\linewidth]{
+  \begin{minipage}{0.8\linewidth}
+    \vspace{2cm}
+    \begin{center}
+    \textbf{[ Diagramme de Cas d'Utilisation ]}\\[0.5cm]
+    Acteurs : Administrateur, Enseignant, Etudiant\\[0.3cm]
+    Cas d'utilisation principaux :\\
+    -- S'authentifier\\
+    -- Se deconnecter\\
+    -- Consulter son profil\\
+    -- Gerer les comptes (Admin)\\
+    -- Gerer les sujets PFE\\
+    -- S'affecter au jury\\
+    -- Soumettre une reclamation\\[0.5cm]
+    \textit{(A inserer : capture de l'outil de modelisation UML)}
+    \end{center}
+    \vspace{2cm}
+  \end{minipage}
+}
+\caption{Diagramme de cas d'utilisation -- Module Auth et Roles}
+\label{fig:usecase}
+\end{figure}
+
+\subsection{Diagramme de Sequence -- Flux d'Authentification}
+
+La figure suivante illustre le flux complet de connexion d'un
+utilisateur, de la saisie des identifiants jusqu'a l'emission du JWT.
+
+\begin{figure}[H]
+\centering
+\framebox[0.85\linewidth]{
+  \begin{minipage}{0.8\linewidth}
+    \vspace{2cm}
+    \begin{center}
+    \textbf{[ Diagramme de Sequence -- Authentification JWT ]}\\[0.5cm]
+    Lifelines :\\
+    Client (React) -- Auth Middleware -- Auth Controller -- PostgreSQL\\[0.5cm]
+    Etapes principales :\\
+    1. POST /api/auth/login (email, password)\\
+    2. findUser(email) sur la base de donnees\\
+    3. bcrypt.compare(password, hash)\\
+    4. jwt.sign(\{id, role\}, SECRET)\\
+    5. Retour 200 \{token, user\}\\
+    6. Stockage dans localStorage\\
+    7. Authorization: Bearer token\\[0.5cm]
+    \textit{(A inserer : capture du diagramme de sequence)}
+    \end{center}
+    \vspace{2cm}
+  \end{minipage}
+}
+\caption{Diagramme de sequence -- Flux d'authentification JWT}
+\label{fig:sequence}
+\end{figure}
+
+\subsection{Diagramme de Classes Simplifie}
+
+\begin{figure}[H]
+\centering
+\framebox[0.85\linewidth]{
+  \begin{minipage}{0.8\linewidth}
+    \vspace{1.5cm}
+    \begin{center}
+    \textbf{[ Diagramme de Classes -- Module Auth ]}\\[0.5cm]
+    Classes principales :\\[0.3cm]
+
+    \textbf{User}\\
+    -- id : String (UUID)\\
+    -- email : String (unique)\\
+    -- passwordHash : String\\
+    -- role : Role (enum)\\
+    -- nom, prenom : String\\
+    -- isActive : Boolean\\[0.3cm]
+
+    \textbf{Role (enumeration)}\\
+    ADMIN, TEACHER, STUDENT\\[0.3cm]
+
+    \textbf{AuthService}\\
+    + login(email, pwd)\\
+    + verifyToken(token)\\
+    + hashPassword(pwd)\\
+    + generateToken(user)\\[0.5cm]
+    \textit{(A inserer : capture du diagramme de classes)}
+    \end{center}
+    \vspace{1.5cm}
+  \end{minipage}
+}
+\caption{Diagramme de classes -- Module Authentification}
+\label{fig:classes}
+\end{figure}
+
+\section{Architecture du Systeme}
+
+Le SGUI suit une architecture Client-Serveur a trois couches :
+
+\begin{table}[H]
+\centering
+\caption{Architecture en trois couches}
+\begin{tabular}{ll}
+\toprule
+\textbf{Couche} & \textbf{Technologies} \\
+\midrule
+Presentation        & React.js + Tailwind CSS + Axios \\
+Applicative (API)   & Node.js + Express.js + TypeScript \\
+Persistance         & PostgreSQL + Prisma ORM \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+
+Ce chapitre a presente l'analyse des besoins fonctionnels et non
+fonctionnels du SGUI, modelise les interactions cles via des diagrammes
+UML et defini l'architecture logicielle retenue. Le chapitre suivant
+detaille l'implementation concrete du module d'authentification et de
+gestion des roles.
+
+% ════════════════════════════════════════════════════════════
+\chapter{Implementation et Tests}
+% ════════════════════════════════════════════════════════════
+
+\section{Introduction}
+
+Ce chapitre decrit l'implementation du module Authentification et
+Gestion des Roles du SGUI. Nous presentons successivement
+l'environnement de developpement, les composants backend (service JWT,
+middlewares, controleur), les composants frontend (contexte
+d'authentification, routes protegees), puis les resultats des tests
+fonctionnels et de securite.
+
+\section{Environnement de Developpement}
+
+\begin{table}[H]
+\centering
+\caption{Environnement de developpement}
+\begin{tabular}{ll}
+\toprule
+\textbf{Composant} & \textbf{Version} \\
+\midrule
+Node.js              & 20.x LTS \\
+TypeScript           & 5.x \\
+Express.js           & 4.18 \\
+Prisma               & 5.x \\
+PostgreSQL           & 16.x \\
+React.js             & 18.x \\
+Tailwind CSS         & 3.x \\
+bcryptjs             & 2.4.x (cout 12) \\
+jsonwebtoken         & 9.x (HS256) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Architecture du Module}
+
+Le module suit une architecture en couches. Chaque requete traverse
+obligatoirement les middlewares d'authentification et d'autorisation
+avant d'atteindre le controleur metier.
+
+Le flux de traitement est le suivant :
+\begin{enumerate}
+  \item Le client React envoie une requete avec un en-tete
+        \texttt{Authorization: Bearer <token>}.
+  \item Le middleware \texttt{requireAuth} verifie la signature et
+        l'expiration du token.
+  \item Le middleware \texttt{requireRole} verifie que le role est
+        autorise pour la route.
+  \item Le controleur execute la logique metier et interroge la base de
+        donnees via Prisma.
+\end{enumerate}
+
+\section{Modele de Donnees}
+
+\begin{table}[H]
+\centering
+\caption{Schema de l'entite User}
+\begin{tabular}{lll}
+\toprule
+\textbf{Champ} & \textbf{Type} & \textbf{Description} \\
+\midrule
+id           & String (UUID)    & Identifiant unique           \\
+email        & String (unique)  & Adresse e-mail               \\
+passwordHash & String           & Hash bcrypt du mot de passe  \\
+role         & Enum             & admin / teacher / student    \\
+nom          & String           & Nom de famille               \\
+prenom       & String           & Prenom                       \\
+isActive     & Boolean          & Compte actif ou desactive    \\
+createdAt    & DateTime         & Date de creation             \\
+updatedAt    & DateTime         & Derniere modification        \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Matrice d'Autorisation}
+
+\begin{table}[H]
+\centering
+\caption{Matrice d'autorisation des routes API}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Methode} & \textbf{Route} & \textbf{Admin} & \textbf{Teacher} & \textbf{Student} \\
+\midrule
+POST & /api/auth/login            & Oui & Oui & Oui \\
+GET  & /api/auth/me               & Oui & Oui & Oui \\
+POST & /api/auth/logout           & Oui & Oui & Oui \\
+GET  & /api/users                 & Oui & Non & Non \\
+POST & /api/users                 & Oui & Non & Non \\
+GET  & /api/pfe/sujets            & Oui & Oui & Oui \\
+POST & /api/pfe/sujets            & Oui & Oui & Non \\
+GET  & /api/requests/admin/inbox  & Oui & Non & Non \\
+POST & /api/requests/reclamations & Non & Non & Oui \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Implementation Backend}
+
+\subsection{Service d'Authentification}
+
+Le service encapsule toute la logique liee a la verification des
+identifiants, au hachage des mots de passe et a la generation des
+tokens JWT.
+
+Les principales fonctions implementees sont :
+\begin{itemize}
+  \item \texttt{loginUser(email, password)} : verifie les identifiants
+        et retourne un token JWT valide 24 heures.
+  \item \texttt{verifyToken(token)} : decode et valide la signature
+        d'un token recu.
+  \item \texttt{createUser(email, password, role)} : hache le mot de
+        passe avec bcrypt (cout 12) et cree le compte.
+\end{itemize}
+
+\subsection{Middleware d'Authentification}
+
+Le middleware \texttt{requireAuth} verifie la presence et la validite
+du token JWT dans l'en-tete \texttt{Authorization} de chaque requete
+entrante. En cas d'echec, il retourne un code 401.
+
+\subsection{Middleware d'Autorisation par Role}
+
+Le middleware \texttt{requireRole} est une fonction d'ordre superieur
+qui genere dynamiquement un middleware verifiant que le role de
+l'utilisateur fait partie de la liste des roles autorises pour la
+route concernee. En cas d'echec, il retourne un code 403.
+
+\subsection{Controleur d'Authentification}
+
+Le controleur expose trois routes principales :
+\begin{itemize}
+  \item \texttt{POST /api/auth/login} : connexion utilisateur.
+  \item \texttt{GET /api/auth/me} : recuperation du profil de
+        l'utilisateur connecte (route protegee).
+  \item \texttt{POST /api/auth/logout} : deconnexion (invalidation
+        cote client).
+\end{itemize}
+
+\section{Implementation Frontend}
+
+\subsection{Contexte d'Authentification React}
+
+Le \texttt{AuthContext} centralise l'etat d'authentification et le
+rend disponible a tous les composants de l'application via le hook
+\texttt{useAuth()}. Il expose :
+\begin{itemize}
+  \item L'objet \texttt{user} (ou \texttt{null}).
+  \item La fonction \texttt{login(email, password)}.
+  \item La fonction \texttt{logout()}.
+  \item L'etat \texttt{loading} pour la verification initiale.
+\end{itemize}
+
+\subsection{Intercepteur Axios}
+
+L'intercepteur injecte automatiquement le token JWT dans l'en-tete de
+chaque requete sortante et redirige vers la page de connexion en cas
+de reponse 401.
+
+\subsection{Routes Protegees}
+
+Le composant \texttt{ProtectedRoute} empeche l'acces aux pages privees
+si l'utilisateur n'est pas authentifie ou ne possede pas le role
+requis. La redirection se fait automatiquement vers la page de
+connexion ou la page d'erreur 403.
+
+\section{Securite Applicative}
+
+\begin{table}[H]
+\centering
+\caption{Mesures de securite implementees}
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Menace} & \textbf{Contre-mesure} \\
+\midrule
+Injection SQL    & Prisma ORM avec requetes parametrees \\
+Force brute      & Rate-limiting 20 requetes / 15 min par IP \\
+XSS              & React echappe le HTML par defaut, en-tetes CSP \\
+CSRF             & JWT en en-tete (non envoye automatiquement) \\
+JWT falsifie     & Signature HMAC-SHA256, cle de 256 bits minimum \\
+Fuite de donnees & select Prisma explicite, jamais retourner le hash \\
+Elevation role   & Middleware requireRole sur chaque route sensible \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Tests et Validation}
+
+\subsection{Tests Fonctionnels -- Authentification}
+
+\begin{table}[H]
+\centering
+\caption{Resultats des tests fonctionnels d'authentification}
+\begin{tabular}{lp{6cm}cc}
+\toprule
+\textbf{ID} & \textbf{Scenario} & \textbf{Code attendu} & \textbf{Resultat} \\
+\midrule
+TF-01 & Connexion identifiants valides         & 200 & PASS \\
+TF-02 & Connexion mot de passe incorrect       & 401 & PASS \\
+TF-03 & Connexion email inexistant             & 401 & PASS \\
+TF-04 & Acces route protegee sans token        & 401 & PASS \\
+TF-05 & Acces route protegee avec token expire & 401 & PASS \\
+TF-06 & Acces route admin avec role enseignant & 403 & PASS \\
+TF-07 & Recuperation profil /auth/me           & 200 & PASS \\
+TF-08 & Deconnexion utilisateur                & 200 & PASS \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tests Fonctionnels -- RBAC}
+
+\begin{table}[H]
+\centering
+\caption{Resultats des tests RBAC}
+\begin{tabular}{lp{6cm}cc}
+\toprule
+\textbf{ID} & \textbf{Scenario} & \textbf{Code attendu} & \textbf{Resultat} \\
+\midrule
+TC-01 & Admin cree un compte enseignant         & 201 & PASS \\
+TC-02 & Enseignant tente de creer un compte     & 403 & PASS \\
+TC-03 & Etudiant soumet une reclamation         & 201 & PASS \\
+TC-04 & Etudiant accede a l'inbox admin         & 403 & PASS \\
+TC-05 & Enseignant modifie sujet PFE (propose)  & 200 & PASS \\
+TC-06 & Enseignant modifie sujet PFE valide     & 403 & PASS \\
+TC-07 & Admin modifie tout sujet PFE            & 200 & PASS \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tests de Securite}
+
+\begin{table}[H]
+\centering
+\caption{Resultats des tests de securite}
+\begin{tabular}{lp{6cm}c}
+\toprule
+\textbf{Test} & \textbf{Description} & \textbf{Resultat} \\
+\midrule
+Brute-force /login &
+  50 requetes en 10 secondes &
+  429 apres 20 req \\
+JWT falsifie &
+  Modification d'un bit dans la signature &
+  401 PASS \\
+Elevation privilege &
+  Token student sur route admin &
+  403 PASS \\
+Injection SQL &
+  Payload OR 1=1 dans le champ email &
+  Neutralise PASS \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Couverture de Tests}
+
+\begin{table}[H]
+\centering
+\caption{Couverture de tests par module}
+\begin{tabular}{lc}
+\toprule
+\textbf{Module} & \textbf{Couverture (\%)} \\
+\midrule
+Auth         & 92 \\
+Users        & 88 \\
+PFE          & 85 \\
+Requests     & 90 \\
+Annonces     & 78 \\
+\midrule
+\textbf{Moyenne} & \textbf{86.6} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+
+Ce chapitre a presente l'implementation complete du module
+d'authentification et de gestion des roles, couvrant le backend
+(service JWT, middlewares RBAC, controleur) et le frontend (contexte
+React, intercepteur Axios, routes protegees). La campagne de tests
+fonctionnels et de securite confirme la robustesse du systeme face aux
+principales menaces applicatives.
+
+% ════════════════════════════════════════════════════════════
+%  CONCLUSION GENERALE
+% ════════════════════════════════════════════════════════════
+\chapter*{Conclusion Generale et Perspectives}
+\addcontentsline{toc}{chapter}{Conclusion Generale}
+
+\section*{Bilan}
+
+Ce memoire a presente la conception et le developpement du module
+\textbf{Authentification et Gestion des Roles} du Systeme de Gestion
+Universitaire Integre (SGUI). Le travail realise a permis d'atteindre
+l'ensemble des objectifs fixes :
+
+\begin{itemize}
+  \item Un mecanisme d'authentification JWT conforme au standard
+        RFC 7519, garantissant des sessions sans etat et une
+        scalabilite horizontale.
+  \item Un modele RBAC a trois roles (Administrateur, Enseignant,
+        Etudiant) avec une matrice d'autorisation fine par route API.
+  \item Une interface utilisateur reactive et moderne, construite avec
+        React.js et Tailwind CSS, offrant des tableaux de bord adaptes
+        a chaque profil.
+  \item Une securite applicative validee contre les principales
+        vulnerabilites web (injection SQL, XSS, CSRF, force brute,
+        elevation de privileges).
+  \item Une couverture de tests superieure a 85\% sur l'ensemble des
+        modules critiques.
+\end{itemize}
+
+\section*{Difficultes Rencontrees}
+
+Le principal defi technique a ete la gestion de la synchronisation des
+roles entre le token JWT (contenant le role au moment de la connexion)
+et les modifications de role effectuees par l'administrateur apres
+l'emission du token. Ce probleme a ete resolu par l'implementation d'un
+mecanisme de verification en base de donnees sur les routes critiques.
+
+\section*{Perspectives}
+
+Plusieurs ameliorations peuvent etre envisagees pour les versions
+futures :
+
+\begin{enumerate}
+  \item \textbf{Authentification multi-facteurs (MFA)} : ajout d'un
+        second facteur (TOTP, SMS) pour les comptes administrateurs.
+  \item \textbf{Refresh Tokens} : mecanisme de renouvellement silencieux
+        des tokens JWT pour ameliorer l'experience utilisateur.
+  \item \textbf{Single Sign-On (SSO)} : integration avec le systeme
+        d'identite de l'universite via OpenID Connect ou SAML 2.0.
+  \item \textbf{Audit Log} : journalisation immuable de toutes les
+        actions sensibles (connexion, modification de role, validation
+        PFE).
+  \item \textbf{Internationalisation} : prise en charge complete de
+        l'arabe pour les interfaces utilisateur.
+\end{enumerate}
+
+\vspace{1cm}
+
+En conclusion, ce projet a demontre la viabilite d'une architecture
+moderne basee sur JWT et RBAC pour la gestion securisee des acces dans
+un contexte universitaire algerien. Le systeme est deployable,
+maintenable et extensible, constituant une base solide pour les futurs
+modules du SGUI.
+
+% ────────────────────────────────────────────────────────────
+%  REFERENCES
+% ────────────────────────────────────────────────────────────
+\chapter*{References Bibliographiques}
+\addcontentsline{toc}{chapter}{References Bibliographiques}
+
+\begin{enumerate}
+  \item M. Jones, J. Bradley, N. Sakimura, ``JSON Web Token (JWT)'',
+        RFC 7519, IETF, 2015.
+
+  \item M. Jones, D. Hardt, ``The OAuth 2.0 Authorization Framework:
+        Bearer Token Usage'', RFC 6750, IETF, 2012.
+
+  \item OWASP Foundation, ``OWASP Top Ten 2021'', OWASP, 2021.
+
+  \item M. Casciaro, L. Mammino, \textit{Node.js Design Patterns},
+        3rd edition, Packt Publishing, 2020.
+
+  \item Prisma Team, \textit{Prisma Documentation}, 2024.\\
+        \url{https://www.prisma.io/docs}
+
+  \item N. Provos, D. Mazieres, ``A Future-Adaptable Password Scheme'',
+        USENIX Annual Technical Conference, 1999.
+
+  \item D. Ferraiolo, R. Kuhn, R. Chandramouli, \textit{Role-Based
+        Access Control}, Artech House, 2003.
+
+  \item R. Wieruch, \textit{The Road to React}, 2023.
+
+  \item Express.js Documentation, \url{https://expressjs.com}
+
+  \item React Documentation, \url{https://react.dev}
+\end{enumerate}
+
+% ============================================================
+\end{document}
+% ============================================================

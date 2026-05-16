@@ -201,20 +201,56 @@ class GroupeController {
     }
   }
 
-  async getAll(_req, res) {
+  async getAll(req, res) {
     try {
-      const groupes = await prisma.groupPfe.findMany({
-        include: {
-          sujetFinal: {
-            include: {
-              enseignant: { include: { user: true } },
-            },
+      const include = {
+        sujetFinal: {
+          include: {
+            enseignant: { include: { user: true } },
           },
-          coEncadrant: { include: { user: true } },
-          groupMembers: { include: { etudiant: { include: { user: true } } } },
-          pfeJury: { include: { enseignant: { include: { user: true } } } },
         },
-      });
+        coEncadrant: { include: { user: true } },
+        groupMembers: { include: { etudiant: { include: { user: true } } } },
+        pfeJury: { include: { enseignant: { include: { user: true } } } },
+      };
+
+      // ── RBAC scoping ────────────────────────────────────────────────
+      // Admins see everything. Anyone else (teacher / student) must be
+      // restricted to groups they have a legitimate reason to view. Without
+      // this, the endpoint leaked every university group to every teacher.
+      if (!isAdmin(req.user)) {
+        const userId = Number(req.user?.id);
+        const enseignant = userId
+          ? await prisma.enseignant.findUnique({
+              where: { userId },
+              select: { id: true },
+            })
+          : null;
+
+        if (!enseignant) {
+          // Non-admin, non-teacher → no groups exposed via this endpoint.
+          return res.json({ success: true, data: [] });
+        }
+
+        const teacherId = enseignant.id;
+        const groupes = await prisma.groupPfe.findMany({
+          where: {
+            OR: [
+              // 1. Groups whose final subject was proposed by this teacher.
+              { sujetFinal: { enseignantId: teacherId } },
+              // 2. Groups where this teacher is the co-supervisor.
+              { coEncadrantId: teacherId },
+              // 3. Groups where this teacher sits on the jury (any role).
+              { pfeJury: { some: { enseignantId: teacherId } } },
+            ],
+          },
+          include,
+        });
+        return res.json({ success: true, data: groupes });
+      }
+
+      // Admin path — unfiltered.
+      const groupes = await prisma.groupPfe.findMany({ include });
       return res.json({ success: true, data: groupes });
     } catch (err) {
       return sendError(res, err, 'Erreur récupération groupes:');
@@ -410,6 +446,64 @@ class GroupeController {
       });
     } catch (err) {
       return sendError(res, err, 'Erreur affectation:');
+    }
+  }
+
+  /**
+   * PATCH /api/v1/pfe/groupes/:id
+   *
+   * Admin-only: edit basic group info (name, co-supervisor, assigned subject).
+   * Admins can edit any group at any time, regardless of status.
+   */
+  async update(req, res) {
+    try {
+      if (!isAdmin(req.user)) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Only admins can edit groups.' },
+        });
+      }
+
+      const id = Number.parseInt(req.params.id, 10);
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_ID', message: 'Invalid group id.' },
+        });
+      }
+
+      const { nom_ar, nom_en, coEncadrantId, sujetFinalId } = req.body || {};
+
+      const data = {};
+      if (typeof nom_ar === 'string') data.nom_ar = nom_ar.trim();
+      if (typeof nom_en === 'string') data.nom_en = nom_en.trim();
+      if (coEncadrantId === null || Number.isInteger(Number(coEncadrantId))) {
+        data.coEncadrantId = coEncadrantId === null ? null : Number(coEncadrantId);
+      }
+      if (sujetFinalId === null || Number.isInteger(Number(sujetFinalId))) {
+        data.sujetFinalId = sujetFinalId === null ? null : Number(sujetFinalId);
+      }
+
+      if (Object.keys(data).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'NO_FIELDS', message: 'No editable fields provided.' },
+        });
+      }
+
+      const updated = await prisma.groupPfe.update({
+        where: { id },
+        data,
+        include: {
+          sujetFinal: { include: { enseignant: { include: { user: true } } } },
+          groupMembers: { include: { etudiant: { include: { user: true } } } },
+          coEncadrant: { include: { user: true } },
+        },
+      });
+
+      return res.json({ success: true, data: updated });
+    } catch (err) {
+      return sendError(res, err, 'Erreur mise à jour groupe:');
     }
   }
 }

@@ -4,9 +4,23 @@ const { emitSubjectCreatedAlerts } = require('./pfe-alerts.service');
 
 const prisma = new PrismaClient();
 
-const isAdmin = (req) =>
-  Array.isArray(req?.user?.roles) &&
-  req.user.roles.some((r) => String(r || '').toLowerCase() === 'admin');
+const isAdmin = (req) => {
+  const u = req?.user;
+  if (!u) return false;
+  // 1. coreRole field (set by RBAC middleware)
+  if (String(u.coreRole || '').toLowerCase() === 'admin') return true;
+  // 2. roles array — strings or objects with .nom / .name
+  if (Array.isArray(u.roles)) {
+    const matches = u.roles.some((r) => {
+      const name = typeof r === 'string' ? r : (r?.nom || r?.name || '');
+      return String(name).toLowerCase() === 'admin';
+    });
+    if (matches) return true;
+  }
+  // 3. legacy single-role field
+  if (String(u.role || '').toLowerCase() === 'admin') return true;
+  return false;
+};
 
 const isStudent = (req) =>
   Array.isArray(req?.user?.roles) &&
@@ -55,7 +69,10 @@ class SujetController {
     if (!enseignantId) {
       return res.status(400).json({
         success: false,
-        error: 'enseignantId est requis et doit etre un entier positif',
+        error: {
+          code: 'ENSEIGNANT_ID_REQUIRED',
+          message: 'enseignantId est requis et doit être un entier positif.',
+        },
       });
     }
 
@@ -118,7 +135,10 @@ class SujetController {
     if (!promoId) {
       return res.status(400).json({
         success: false,
-        error: 'Aucune promo disponible. Veuillez configurer les promotions ou fournir promoId.',
+        error: {
+          code: 'PROMO_REQUIRED',
+          message: 'Aucune promo disponible. Veuillez configurer les promotions ou fournir promoId.',
+        },
       });
     }
     
@@ -132,9 +152,12 @@ class SujetController {
     });
     
     if (sujetsCount >= maxSubjects && !isAdmin(req)) {
-      return res.status(400).json({ 
-        success: false, 
-        error: `Un enseignant ne peut pas proposer plus de ${maxSubjects} sujets par année universitaire` 
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'SUBJECT_QUOTA_EXCEEDED',
+          message: `Un enseignant ne peut pas proposer plus de ${maxSubjects} sujets par année universitaire. (${sujetsCount}/${maxSubjects})`,
+        },
       });
     }
     
@@ -170,8 +193,19 @@ class SujetController {
 
     res.status(201).json({ success: true, data: sujet });
   } catch (error) {
-    console.error('Erreur création:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Erreur création sujet PFE:', {
+      message: error?.message,
+      code: error?.code,
+      meta: error?.meta,
+      stack: error?.stack,
+    });
+    res.status(500).json({
+      success: false,
+      error: {
+        code: error?.code || 'SUBJECT_CREATE_FAILED',
+        message: error?.message || 'Échec de la création du sujet.',
+      },
+    });
   }
 }
   // Récupérer tous les sujets
@@ -230,8 +264,14 @@ class SujetController {
       });
       res.json({ success: true, data: sujets });
     } catch (error) {
-      console.error('Erreur récupération:', error);
-      res.status(500).json({ success: false, error: error.message });
+      console.error('Erreur récupération sujets:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: error?.code || 'SUBJECT_FETCH_FAILED',
+          message: error?.message || 'Échec de la récupération des sujets.',
+        },
+      });
     }
   }
 
@@ -341,8 +381,14 @@ class SujetController {
       });
       res.json({ success: true, data: sujet });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ success: false, error: 'Erreur lors de la mise à jour' });
+      console.error('Erreur mise à jour sujet:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: error?.code || 'SUBJECT_UPDATE_FAILED',
+          message: error?.message || 'Erreur lors de la mise à jour.',
+        },
+      });
     }
   }
 

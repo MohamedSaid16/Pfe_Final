@@ -142,15 +142,8 @@ export default function ProfilePage() {
 
       {/* ── Identity Header Card ────────────────────────────── */}
       <section className="relative bg-surface rounded-2xl border border-edge shadow-card overflow-hidden">
-        <div className="h-28 bg-gradient-to-r from-brand to-brand-hover relative">
-          <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 400 96" preserveAspectRatio="xMidYMid slice">
-            <circle cx="350" cy="20" r="80" fill="white" opacity="0.15" />
-            <circle cx="50" cy="80" r="60" fill="white" opacity="0.07" />
-          </svg>
-        </div>
-
-        <div className="px-6 pb-6">
-          <div className="-mt-12 relative z-10 flex items-end gap-4">
+        <div className="px-6 pt-6 pb-6">
+          <div className="relative z-10 flex items-end gap-4">
             {pagePhotoUrl ? (
               <img
                 src={pagePhotoUrl}

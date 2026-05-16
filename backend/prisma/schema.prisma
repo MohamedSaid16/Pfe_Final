@@ -155,6 +155,9 @@ model Promo {
   etudiants     Etudiant[]
   enseignements Enseignement[]
   pfeSujets     PfeSujet[]
+  // Modules created directly inside this promo (new model). Legacy modules
+  // are still discoverable via specialite.modules until migrated.
+  modules       Module[]
 
   @@map("promos")
 }
@@ -351,7 +354,13 @@ model Module {
   nom_en         String? @db.VarChar(150)
   code           String  @unique @db.VarChar(50)
   semestre       Int?    @db.SmallInt
+  // specialiteId — legacy parent. Kept NOT NULL so existing rows stay valid.
+  // New modules created from inside a promo derive this from the promo's specialité.
   specialiteId   Int     @map("specialite_id")
+  // promoId — direct parent. NULLABLE so existing rows stay valid; new code
+  // sets it whenever a module is created inside a promo. The Hierarchy
+  // resolver prefers this when present, falling back to specialiteId.
+  promoId        Int?    @map("promo_id")
   volumeCours    Int     @default(0) @map("volume_cours")
   volumeTd       Int     @default(0) @map("volume_td")
   volumeTp       Int     @default(0) @map("volume_tp")
@@ -361,8 +370,10 @@ model Module {
   description_en String? @db.Text
 
   specialite    Specialite     @relation(fields: [specialiteId], references: [id])
+  promo         Promo?         @relation(fields: [promoId], references: [id])
   enseignements Enseignement[]
 
+  @@index([promoId])
   @@map("modules")
 }
 

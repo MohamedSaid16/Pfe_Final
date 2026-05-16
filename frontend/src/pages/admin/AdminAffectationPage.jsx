@@ -933,33 +933,70 @@ export default function AdminAffectationPage() {
     selectedCampaign && ['fermee', 'ouverte'].includes(selectedCampaign.status);
   const canDelete = selectedCampaign?.status === 'brouillon';
 
+  // ── KPI roll-up across all campaigns (cheap — local arithmetic) ────
+  const affectationKpis = (() => {
+    const totalCampaigns = campaigns.length;
+    const openCampaigns = campaigns.filter((c) => c.status === 'ouverte').length;
+    const draftCampaigns = campaigns.filter((c) => c.status === 'brouillon').length;
+    const completedCampaigns = campaigns.filter((c) => c.status === 'terminee').length;
+    return { totalCampaigns, openCampaigns, draftCampaigns, completedCampaigns };
+  })();
+
   return (
-    <div className="space-y-6 max-w-7xl min-w-0">
-      <section className="relative overflow-hidden rounded-3xl border border-edge bg-surface p-6 shadow-sm sm:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand/10 blur-3xl" />
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-ink-tertiary">Administration</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">Affectation</h1>
-            <p className="mt-2 max-w-2xl text-sm text-ink-secondary">
-              Create campaigns, set specialite quotas, collect student voeux, and run the affectation algorithm.
-              Students are notified automatically when a campaign opens and when results are published.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={refreshAll}
-            disabled={listLoading || detailLoading}
-            className="inline-flex items-center gap-2 rounded-lg border border-edge bg-surface px-4 py-2 text-sm font-medium text-ink-secondary transition-colors hover:border-brand/40 hover:bg-brand/5 hover:text-brand disabled:opacity-60"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${listLoading || detailLoading ? 'animate-spin' : ''}`}
-              strokeWidth={2}
-            />
-            Refresh
-          </button>
+    <div className="space-y-4 max-w-[1600px] min-w-0">
+      {/* ── Compact ERP header — breadcrumb, title, refresh ───────────── */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-edge-subtle pb-3">
+        <div className="min-w-0">
+          <nav className="flex items-center gap-1.5 text-xs text-ink-tertiary">
+            <span className="hover:text-brand transition-colors">Admin</span>
+            <ChevronRight className="h-3 w-3" />
+            <span className="font-medium text-ink-secondary">Student Affectation</span>
+          </nav>
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-ink">
+            Student Affectation
+            {affectationKpis.openCampaigns > 0 && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold tracking-wider text-success">
+                {affectationKpis.openCampaigns} open
+              </span>
+            )}
+          </h1>
         </div>
-      </section>
+        <button
+          type="button"
+          onClick={refreshAll}
+          disabled={listLoading || detailLoading}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-ink-secondary hover:border-brand/40 hover:bg-brand/5 hover:text-brand transition-colors disabled:opacity-60"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${listLoading || detailLoading ? 'animate-spin' : ''}`}
+            strokeWidth={2}
+          />
+          Refresh
+        </button>
+      </header>
+
+      {/* ── KPI strip ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {[
+          { label: 'Total',     value: affectationKpis.totalCampaigns,    Icon: Layers,       accent: 'text-brand bg-brand/10' },
+          { label: 'Open',      value: affectationKpis.openCampaigns,     Icon: Activity,     accent: 'text-success bg-success/10' },
+          { label: 'Draft',     value: affectationKpis.draftCampaigns,    Icon: Clock,        accent: 'text-warning bg-warning/10' },
+          { label: 'Completed', value: affectationKpis.completedCampaigns, Icon: CheckCircle2, accent: 'text-info bg-info/10' },
+        ].map((k) => (
+          <div
+            key={k.label}
+            className="group flex items-center gap-3 rounded-xl border border-edge bg-surface px-3 py-2.5 shadow-sm transition-all hover:border-brand/40 hover:shadow-md"
+          >
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${k.accent}`}>
+              <k.Icon className="h-4 w-4" strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-tertiary">{k.label}</p>
+              <p className="text-lg font-bold leading-tight text-ink">{k.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <Banner kind="error" onDismiss={() => setError('')}>
         {error}
@@ -968,7 +1005,7 @@ export default function AdminAffectationPage() {
         {success}
       </Banner>
 
-      <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
         <div className="space-y-4">
           <CampaignList
             campaigns={campaigns}
@@ -990,11 +1027,11 @@ export default function AdminAffectationPage() {
             </div>
           ) : (
             <>
-              <section className="rounded-2xl border border-edge bg-surface p-5 shadow-sm">
+              <section className="rounded-xl border border-edge bg-surface p-4 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-semibold text-ink">{campaignLabel(selectedCampaign)}</h2>
+                      <h2 className="text-base font-bold text-ink">{campaignLabel(selectedCampaign)}</h2>
                       <StatusBadge status={selectedCampaign.status} />
                     </div>
                     <p className="mt-1 text-sm text-ink-secondary">
@@ -1102,7 +1139,7 @@ export default function AdminAffectationPage() {
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-edge bg-surface p-5 shadow-sm">
+              <section className="rounded-xl border border-edge bg-surface p-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-semibold text-ink">Linked specialites & quotas</h3>
                   {!canEditLinks && selectedCampaign.status !== 'ouverte' ? (
@@ -1133,7 +1170,7 @@ export default function AdminAffectationPage() {
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-edge bg-surface p-5 shadow-sm">
+              <section className="rounded-xl border border-edge bg-surface p-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-semibold text-ink">Results</h3>
                   <div className="flex items-center gap-2">

@@ -3,6 +3,18 @@ const { emitJuryAssignmentAlert } = require('./pfe-alerts.service');
 
 const prisma = new PrismaClient();
 
+function isAdminUser(user) {
+  if (!user) return false;
+  if (String(user.coreRole || '').toLowerCase() === 'admin') return true;
+  if (Array.isArray(user.roles)) {
+    return user.roles.some((r) => {
+      const name = typeof r === 'string' ? r : (r?.nom || r?.name || '');
+      return String(name).toLowerCase() === 'admin';
+    });
+  }
+  return String(user.role || '').toLowerCase() === 'admin';
+}
+
 class JuryController {
   async addMembre(req, res) {
     try {
@@ -82,19 +94,91 @@ class JuryController {
 
   async getAll(req, res) {
     try {
-      const jury = await prisma.pfeJury.findMany({
-        include: {
-          group: true,
-          enseignant: {
-            include: { user: true },
+      const include = {
+        group: {
+          include: {
+            sujetFinal: { include: { enseignant: { include: { user: true } } } },
+            groupMembers: { include: { etudiant: { include: { user: true } } } },
           },
         },
-      });
+        enseignant: { include: { user: true } },
+      };
 
-      res.json({ success: true, data: jury });
+      // RBAC scoping: admins see all jury rows; teachers see only their own.
+      // Without this, any teacher could enumerate every jury in the database.
+      if (!isAdminUser(req.user)) {
+        const userId = Number(req.user?.id);
+        const enseignant = userId
+          ? await prisma.enseignant.findUnique({
+              where: { userId },
+              select: { id: true },
+            })
+          : null;
+        if (!enseignant) {
+          return res.json({ success: true, data: [] });
+        }
+        const jury = await prisma.pfeJury.findMany({
+          where: { enseignantId: enseignant.id },
+          include,
+        });
+        return res.json({ success: true, data: jury });
+      }
+
+      const jury = await prisma.pfeJury.findMany({ include });
+      return res.json({ success: true, data: jury });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: { code: 'JURY_FETCH_FAILED', message: error.message } });
+    }
+  }
+
+  /**
+   * GET /api/v1/pfe/jury/me
+   *
+   * Returns the jury assignments of the authenticated teacher. Used by the
+   * teacher Defense Plan page. Admins get an empty array unless they happen
+   * to also be a teacher.
+   */
+  async getMine(req, res) {
+    try {
+      const userId = Number(req.user?.id);
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: { code: 'AUTH_REQUIRED', message: 'Authentication required.' },
+        });
+      }
+      const enseignant = await prisma.enseignant.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (!enseignant) {
+        return res.json({ success: true, data: [] });
+      }
+      const jury = await prisma.pfeJury.findMany({
+        where: { enseignantId: enseignant.id },
+        include: {
+          group: {
+            include: {
+              sujetFinal: { include: { enseignant: { include: { user: true } } } },
+              groupMembers: { include: { etudiant: { include: { user: true } } } },
+              coEncadrant: { include: { user: true } },
+            },
+          },
+          enseignant: { include: { user: true } },
+        },
+        orderBy: [
+          { group: { dateSoutenance: 'asc' } },
+          { id: 'asc' },
+        ],
+      });
+      return res.json({ success: true, data: jury });
+    } catch (error) {
+      console.error('getMine jury error:', error);
+      return res.status(500).json({
+        success: false,
+        error: { code: 'JURY_ME_FAILED', message: error.message },
+      });
     }
   }
 

@@ -13,6 +13,10 @@ router.post('/manual', requireAuth, (req, res) => groupeController.createManual(
 // PATCH /api/v1/pfe/groupes/:id/soutenance
 router.patch('/:id/soutenance', requireAuth, (req, res) => groupeController.scheduleSoutenance(req, res));
 
+// ─── Admin-only: edit basic group info (name, co-supervisor, subject) ────
+// PATCH /api/v1/pfe/groupes/:id
+router.patch('/:id', requireAuth, (req, res) => groupeController.update(req, res));
+
 // ─── Existing endpoints (kept untouched) ─────────────────────────────────
 router.post('/', (req, res) => groupeController.create(req, res));
 router.get('/', (req, res) => groupeController.getAll(req, res));

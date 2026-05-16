@@ -102,10 +102,21 @@ export const createAnnonceHandler = async (req: AuthRequest, res: Response): Pro
     const normalizedTitle = typeof titre === "string" ? titre.trim() : "";
     const normalizedContent = typeof contenu === "string" ? contenu.trim() : "";
 
-    if (!normalizedTitle || !normalizedContent) {
+    // Per-field error reporting so the client can highlight the right field
+    // instead of showing a single generic "both required" toast.
+    const fieldErrors: Record<string, string> = {};
+    if (!normalizedTitle)   fieldErrors.titre   = "Title is required";
+    if (!normalizedContent) fieldErrors.contenu = "Content is required";
+
+    if (Object.keys(fieldErrors).length > 0) {
       res.status(400).json({
         success: false,
         message: "Titre et contenu sont obligatoires",
+        error: {
+          code: "MISSING_FIELDS",
+          message: "Titre et contenu sont obligatoires",
+          fields: fieldErrors,
+        },
       });
       return;
     }

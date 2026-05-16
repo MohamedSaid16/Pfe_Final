@@ -11,7 +11,8 @@ import {
   LeftNav,
   PageHeader,
   SUBJECT_STATUS,
-  normalizeApiError
+  normalizeApiError,
+  EditSubjectModal,
 } from './SharedPFEUI';
 import request from '../../services/api';
 import { pfeAdminAPI } from '../../services/pfe';
@@ -44,6 +45,7 @@ function TeacherSubjectsView({ subjects, loading, error, onRefresh, teacherProfi
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [teacherPromos, setTeacherPromos] = useState([]);
+  const [editingSubject, setEditingSubject] = useState(null);
 
   // ── Submission lock state ───────────────────────────────────
   const [submissionOpen, setSubmissionOpen] = useState(null); // null = loading
@@ -236,7 +238,11 @@ function TeacherSubjectsView({ subjects, loading, error, onRefresh, teacherProfi
                 </div>
                 <div>
                   {subject.status === 'propose' && (
-                    <button className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand hover:bg-brand/10 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => setEditingSubject(subject)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand hover:bg-brand/10 transition-colors"
+                    >
                       <Pencil className="w-3.5 h-3.5" /> Edit
                     </button>
                   )}
@@ -245,6 +251,15 @@ function TeacherSubjectsView({ subjects, loading, error, onRefresh, teacherProfi
             ))}
           </div>
         </div>
+      )}
+
+      {/* Edit modal — only renders when a subject is selected for edit */}
+      {editingSubject && (
+        <EditSubjectModal
+          subject={editingSubject}
+          onClose={() => setEditingSubject(null)}
+          onSaved={async () => { if (onRefresh) await onRefresh(); }}
+        />
       )}
     </div>
   );
@@ -399,10 +414,31 @@ function TeacherGroupsOverview({ groups, loading, error, onRetry }) {
   );
 }
 
+// Role-specific visual treatment for jury badges. Three distinct palettes
+// so a teacher can read their role at a glance.
+const ROLE_BADGE = {
+  president:    { label: 'President',   className: 'bg-brand/10 text-brand border-brand/20' },
+  rapporteur:   { label: 'Rapporteur',  className: 'bg-success/10 text-success border-success/20' },
+  examinateur:  { label: 'Examiner',    className: 'bg-warning/10 text-warning border-warning/20' },
+  membre:       { label: 'Member',      className: 'bg-surface-200 text-ink-secondary border-edge' },
+};
+
+function RoleBadge({ role }) {
+  const key = String(role || '').toLowerCase();
+  const cfg = ROLE_BADGE[key] || ROLE_BADGE.membre;
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cfg.className}`}>
+      {cfg.label}
+    </span>
+  );
+}
+
 function DefensePanel({ teacherId }) {
   const [myJuries, setMyJuries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
 
   React.useEffect(() => {
     if (!teacherId) return;
@@ -422,70 +458,176 @@ function DefensePanel({ teacherId }) {
     return () => { alive = false; };
   }, [teacherId]);
 
+  const filtered = React.useMemo(() => {
+    let list = Array.isArray(myJuries) ? myJuries : [];
+    if (activeFilter !== 'all') {
+      list = list.filter((j) => String(j.role || '').toLowerCase() === activeFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((j) => {
+        const sujet = j.group?.sujetFinal?.titre_ar || j.group?.sujetFinal?.titre_en || '';
+        const gname = j.group?.nom_ar || j.group?.nom_en || '';
+        return sujet.toLowerCase().includes(q) || gname.toLowerCase().includes(q);
+      });
+    }
+    return list;
+  }, [myJuries, activeFilter, search]);
+
+  // Group by date so the schedule reads like a real timeline.
+  const groupedByDate = React.useMemo(() => {
+    const buckets = new Map();
+    for (const j of filtered) {
+      const d = j.group?.dateSoutenance;
+      const key = d ? new Date(d).toDateString() : 'unscheduled';
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(j);
+    }
+    // Sort: scheduled dates ascending, then unscheduled last.
+    return Array.from(buckets.entries()).sort(([a], [b]) => {
+      if (a === 'unscheduled') return 1;
+      if (b === 'unscheduled') return -1;
+      return new Date(a) - new Date(b);
+    });
+  }, [filtered]);
+
+  const counts = React.useMemo(() => {
+    const c = { all: myJuries.length, president: 0, rapporteur: 0, examinateur: 0 };
+    for (const j of myJuries) {
+      const r = String(j.role || '').toLowerCase();
+      if (r in c) c[r] += 1;
+    }
+    return c;
+  }, [myJuries]);
+
   return (
-    <div className="space-y-4">
-      <SectionHeader eyebrow="Defense Planning" title="My Defense Schedule" subtitle="Your assigned jury roles and oral defense sessions" />
+    <div className="space-y-5">
+      <SectionHeader
+        eyebrow="Defense Planning"
+        title="My Defense Schedule"
+        subtitle={`${myJuries.length} jury role${myJuries.length !== 1 ? 's' : ''} assigned`}
+      />
+
+      {/* Filters & search */}
+      {myJuries.length > 0 && (
+        <div className="rounded-2xl border border-edge bg-surface p-4 shadow-card flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {['all', 'president', 'rapporteur', 'examinateur'].map((k) => {
+              const active = activeFilter === k;
+              const label = k === 'all' ? 'All' : ROLE_BADGE[k]?.label || k;
+              const count = counts[k] || 0;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setActiveFilter(k)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-all ${active ? 'bg-brand text-surface border-brand' : 'bg-surface text-ink-secondary border-edge hover:bg-surface-200'}`}
+                >
+                  {label}
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active ? 'bg-surface/20 text-surface' : 'bg-surface-200 text-ink-tertiary'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by group or subject..."
+            className="ml-auto rounded-xl border border-edge-subtle bg-control-bg px-3 py-1.5 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 w-full sm:w-64"
+          />
+        </div>
+      )}
 
       {loading ? (
         <SkeletonList count={2} />
       ) : error ? (
         <ErrorBanner error={{ message: error }} />
       ) : myJuries.length === 0 ? (
-        <EmptyState icon={CalendarDays} title="No defense sessions" hint="You are not assigned to any jury yet." />
+        <EmptyState icon={CalendarDays} title="No defense sessions" hint="You are not assigned to any jury yet. The administration will notify you when assignments are made." />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={CalendarDays} title="No matches" hint="Try a different filter or search term." />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {myJuries.map((j) => (
-            <div key={j.id} className="rounded-2xl border border-edge bg-surface p-5 shadow-card hover:shadow-card-hover transition-all">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${j.role === 'president' ? 'bg-brand/10 text-brand' : 'bg-success/10 text-success'}`}>
-                    {j.role}
+        // Timeline-style layout: each date block then its cards.
+        <div className="space-y-6">
+          {groupedByDate.map(([dateKey, juries]) => {
+            const isUnscheduled = dateKey === 'unscheduled';
+            const dateLabel = isUnscheduled
+              ? 'Unscheduled'
+              : new Date(dateKey).toLocaleDateString(undefined, {
+                  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                });
+            return (
+              <div key={dateKey}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${isUnscheduled ? 'bg-surface-200 text-ink-tertiary' : 'bg-brand/10 text-brand'}`}>
+                    <CalendarDays className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-ink-tertiary uppercase tracking-wider">{isUnscheduled ? 'Pending' : 'Defense day'}</p>
+                    <p className="text-sm font-bold text-ink">{dateLabel}</p>
+                  </div>
+                  <span className="ml-auto rounded-full bg-surface-200 px-2.5 py-1 text-xs font-semibold text-ink-secondary">
+                    {juries.length} session{juries.length !== 1 ? 's' : ''}
                   </span>
-                  <h3 className="text-base font-bold text-ink mt-1">
-                    {j.group?.nom_ar || j.group?.nom_en || `Group #${j.groupId}`}
-                  </h3>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-ink">{j.group?.salleSoutenance || 'TBD'}</p>
-                  <p className="text-xs text-ink-tertiary">Room</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="rounded-xl bg-surface-200/50 p-3">
-                  <p className="text-xs font-semibold text-ink-tertiary uppercase mb-1">Subject</p>
-                  <p className="text-sm font-medium text-ink line-clamp-2">
-                    {j.group?.sujetFinal?.titre_ar || j.group?.sujetFinal?.titre_en || 'N/A'}
-                  </p>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-lg bg-brand/5 p-2 text-brand">
-                      <CalendarDays className="w-4 h-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {juries.map((j) => (
+                    <div
+                      key={j.id}
+                      className="rounded-2xl border border-edge bg-surface p-5 shadow-card hover:shadow-card-hover hover:border-brand/40 transition-all"
+                    >
+                      <div className="flex items-start justify-between mb-3 gap-3">
+                        <div className="min-w-0">
+                          <RoleBadge role={j.role} />
+                          <h3 className="text-base font-bold text-ink mt-1.5 truncate">
+                            {j.group?.nom_ar || j.group?.nom_en || `Group #${j.groupId}`}
+                          </h3>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-ink">{j.group?.salleSoutenance || 'TBD'}</p>
+                          <p className="text-[10px] font-semibold text-ink-tertiary uppercase tracking-wider">Room</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-surface-200/50 p-3 mb-3">
+                        <p className="text-[10px] font-semibold text-ink-tertiary uppercase mb-1 tracking-wider">Subject</p>
+                        <p className="text-sm font-medium text-ink line-clamp-2">
+                          {j.group?.sujetFinal?.titre_ar || j.group?.sujetFinal?.titre_en || 'No subject assigned'}
+                        </p>
+                        {j.group?.sujetFinal?.enseignant?.user && (
+                          <p className="text-xs text-ink-tertiary mt-1">
+                            Supervisor: {getUserDisplayName(j.group.sujetFinal.enseignant.user)}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarDays className="w-3.5 h-3.5 text-ink-tertiary" />
+                          <span className="text-ink-secondary">
+                            {j.group?.dateSoutenance
+                              ? new Date(j.group.dateSoutenance).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : '--:--'}
+                          </span>
+                        </div>
+                        <span className="text-ink-tertiary">·</span>
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-ink-tertiary" />
+                          <span className="text-ink-secondary">
+                            {(j.group?.groupMembers?.length || 0)} student{(j.group?.groupMembers?.length || 0) !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-semibold text-ink-tertiary uppercase leading-none">Date</p>
-                      <p className="text-sm font-bold text-ink">
-                        {j.group?.dateSoutenance ? new Date(j.group.dateSoutenance).toLocaleDateString() : 'Unscheduled'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-lg bg-warning/5 p-2 text-warning">
-                      <Loader2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-semibold text-ink-tertiary uppercase leading-none">Time</p>
-                      <p className="text-sm font-bold text-ink">
-                        {j.group?.dateSoutenance ? new Date(j.group.dateSoutenance).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                      </p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

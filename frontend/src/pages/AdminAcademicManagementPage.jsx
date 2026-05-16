@@ -12,6 +12,7 @@ import {
   Plus,
   Trash2,
   Users,
+  X,
 } from 'lucide-react';
 import { authAPI, academicAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -66,6 +67,34 @@ export default function AdminAcademicManagementPage() {
 
   // Forms
   const [yearForm, setYearForm] = useState({ name: '', isActive: false });
+  const [specialiteForm, setSpecialiteForm] = useState({ nom: '', niveau: '', filiereId: '' });
+  const [filieres, setFilieres] = useState([]);
+  const [specialiteSearch, setSpecialiteSearch] = useState('');
+  const [specialiteNiveauFilter, setSpecialiteNiveauFilter] = useState('');
+
+  // ── Assignment drawer state ───────────────────────────────────────
+  // When a row's "Assign" is clicked, we open a side drawer with the
+  // module + promo context already locked in — no dropdown hunting.
+  const [assignDrawer, setAssignDrawer] = useState(null);
+  // shape: { module: {id, nom}, promo: {id, nom} } | null
+
+  // Required teaching types per module (used to compute "Missing/Partial/Full")
+  // Adjust the set if your curriculum uses different slot types.
+  const REQUIRED_SLOT_TYPES = ['cours', 'td', 'tp'];
+
+  const moduleAssignmentStatus = (mod) => {
+    const types = new Set((mod?.enseignements || []).map((e) => String(e.type).toLowerCase()));
+    if (types.size === 0) return 'missing';
+    const fullySet = REQUIRED_SLOT_TYPES.every((t) => types.has(t));
+    if (fullySet) return 'full';
+    return 'partial';
+  };
+
+  const STATUS_STYLES = {
+    full:    { label: 'Assigned',  className: 'bg-success/10 text-success border-success/30' },
+    partial: { label: 'Partial',   className: 'bg-warning/10 text-warning border-warning/30' },
+    missing: { label: 'Missing',   className: 'bg-danger/10 text-danger border-danger/30' },
+  };
   const [promoForm, setPromoForm] = useState({ nom: '', section: '', specialiteId: '' });
   const [moduleForm, setModuleForm] = useState({ promoId: '', nom: '', semestre: '' });
   const [enseignementForm, setEnseignementForm] = useState({
@@ -77,6 +106,7 @@ export default function AdminAcademicManagementPage() {
 
   const [saving, setSaving] = useState({
     year: false,
+    specialite: false,
     promo: false,
     module: false,
     enseignement: false,
@@ -181,6 +211,34 @@ export default function AdminAcademicManagementPage() {
     }
   };
 
+  // ── Specialite actions ───────────────────────────────────────
+  // Specialité = the catalog entry every promo must reference.
+  // niveau (L1..M2) is enforced server-side; filiereId is optional.
+  const createSpecialite = async () => {
+    const nom = specialiteForm.nom.trim();
+    if (!nom) {
+      setError('Specialité name is required.');
+      return;
+    }
+    setSaving((prev) => ({ ...prev, specialite: true }));
+    setError('');
+    setMessage('');
+    try {
+      const payload = { nom };
+      if (specialiteForm.niveau) payload.niveau = specialiteForm.niveau;
+      if (specialiteForm.filiereId) payload.filiereId = Number(specialiteForm.filiereId);
+
+      await authAPI.adminCreateSpecialite(payload);
+      setSpecialiteForm({ nom: '', niveau: '', filiereId: '' });
+      setMessage(`Specialité "${nom}" created. You can now add promos to it.`);
+      await refresh(true);
+    } catch (err) {
+      setError(err?.data?.error?.message || err.message || 'Failed to create specialité.');
+    } finally {
+      setSaving((prev) => ({ ...prev, specialite: false }));
+    }
+  };
+
   // ── Promo actions ────────────────────────────────────────────
   const createPromo = async () => {
     if (!activeYear) {
@@ -245,6 +303,11 @@ export default function AdminAcademicManagementPage() {
       await academicAPI.createModule({
         nom_ar: moduleForm.nom.trim(),
         code: codeSlug,
+        // promoId is the NEW direct parent — backend derives specialiteId
+        // from this promo so the module truly "lives inside" the promo.
+        // specialiteId is also passed for backward-compat with older API
+        // clients; the server uses promoId when both are present.
+        promoId: Number(moduleForm.promoId),
         specialiteId: promo.specialiteId,
         semestre: moduleForm.semestre ? Number(moduleForm.semestre) : undefined,
       });
@@ -327,32 +390,86 @@ export default function AdminAcademicManagementPage() {
     );
   }
 
+  // ── KPI roll-up (cheap — derived from already-loaded data) ──────────
+  const kpis = (() => {
+    const totalSpecialites = legacyOptions.specialites.length;
+    const totalPromos = legacyOptions.promos.length;
+    const totalModules = legacyOptions.modules.length;
+    const totalEnrollments = tree.reduce((sum, year) => {
+      return sum + (year.promos || []).reduce((s, p) => s + (p.studentCount || p.etudiants?.length || 0), 0);
+    }, 0);
+    const activeYearName = tree.find((y) => y.isActive)?.name || '—';
+    return { totalSpecialites, totalPromos, totalModules, totalEnrollments, activeYearName };
+  })();
+
   return (
-    <div className="space-y-6 max-w-7xl min-w-0">
-      {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden rounded-3xl border border-edge bg-surface p-6 shadow-sm sm:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-20 bottom-0 h-40 w-40 rounded-full bg-brand/5 blur-3xl" />
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-ink-tertiary">
-              Academic Structure
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">Year · Promos · Modules</h1>
-            <p className="mt-2 max-w-2xl text-sm text-ink-secondary">
-              Drill into an academic year, manage its promos, and assign modules and teachers — all from one tree.
-            </p>
-          </div>
+    <div className="space-y-4 max-w-[1600px] min-w-0">
+      {/* ── Compact ERP Header (replaces giant hero) ─────────────────────
+          Title + breadcrumb left, quick actions right. One row. */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-edge-subtle pb-3">
+        <div className="min-w-0">
+          <nav className="flex items-center gap-1.5 text-xs text-ink-tertiary">
+            <button
+              type="button"
+              onClick={() => navigate('/admin')}
+              className="hover:text-brand transition-colors"
+            >
+              Admin
+            </button>
+            <ChevronRight className="h-3 w-3" />
+            <span className="font-medium text-ink-secondary">Academic Structure</span>
+          </nav>
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-ink">
+            Academic Structure
+            <span className="ml-2 inline-flex items-center rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold tracking-wider text-brand">
+              {kpis.activeYearName}
+            </span>
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard/admin/academic/assignments')}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-ink-secondary hover:border-brand/40 hover:bg-brand/5 hover:text-brand transition-colors"
+          >
+            <Users className="h-3.5 w-3.5" />
+            Assignments
+          </button>
           <button
             type="button"
             onClick={() => navigate('/dashboard/admin/users')}
-            className="inline-flex items-center gap-2 rounded-lg border border-edge bg-surface px-4 py-2 text-sm font-medium text-ink-secondary transition-colors hover:border-brand/40 hover:bg-brand/5 hover:text-brand"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-ink-secondary hover:border-brand/40 hover:bg-brand/5 hover:text-brand transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" strokeWidth={2} />
-            Back to Users
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Users
           </button>
         </div>
-      </section>
+      </header>
+
+      {/* ── KPI Strip (4 compact stats, modern dashboard style) ───────── */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {[
+          { label: 'Specialités', value: kpis.totalSpecialites, Icon: GraduationCap, accent: 'text-brand bg-brand/10' },
+          { label: 'Promos',      value: kpis.totalPromos,      Icon: Layers,        accent: 'text-success bg-success/10' },
+          { label: 'Modules',     value: kpis.totalModules,     Icon: BookOpen,      accent: 'text-warning bg-warning/10' },
+          { label: 'Enrolled',    value: kpis.totalEnrollments, Icon: Users,         accent: 'text-info bg-info/10' },
+        ].map((k) => (
+          <div
+            key={k.label}
+            className="group flex items-center gap-3 rounded-xl border border-edge bg-surface px-3 py-2.5 shadow-sm transition-all hover:border-brand/40 hover:shadow-md"
+          >
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${k.accent}`}>
+              <k.Icon className="h-4 w-4" strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-tertiary">
+                {k.label}
+              </p>
+              <p className="text-lg font-bold leading-tight text-ink">{k.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {message ? (
         <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">{message}</div>
@@ -362,14 +479,14 @@ export default function AdminAcademicManagementPage() {
       ) : null}
 
       {/* ── Step 1: Academic Year ────────────────────────────── */}
-      <section className="rounded-2xl border border-edge bg-surface p-6 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <section className="rounded-xl border border-edge bg-surface p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
-              <CalendarRange className="h-5 w-5" strokeWidth={2} />
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+              <CalendarRange className="h-4 w-4" strokeWidth={2} />
             </span>
             <div>
-              <h2 className="text-lg font-semibold text-ink">Step 1 · Academic Year</h2>
+              <h2 className="text-sm font-bold text-ink">Step 1 · Academic Year</h2>
               <p className="text-sm text-ink-secondary">Select a year to drill into. Only one year can be active at a time.</p>
             </div>
           </div>
@@ -447,17 +564,180 @@ export default function AdminAcademicManagementPage() {
         )}
       </section>
 
+      {/* ── Step 1.5: Specialités catalog ─────────────────────
+          A specialité is the catalog entry every promo references. Without
+          at least one, the promo dropdown stays empty and you can't move
+          forward. We surface count + create form together so the admin
+          sees the gap immediately. */}
+      <section className="rounded-xl border border-edge bg-surface p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+              <GraduationCap className="h-4 w-4" strokeWidth={2} />
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-ink">
+                Step 1.5 · Specialités
+              </h2>
+              <p className="text-sm text-ink-secondary">
+                {legacyOptions.specialites.length} specialité
+                {legacyOptions.specialites.length !== 1 ? 's' : ''} in the catalog ·
+                used as the parent of every promo.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <input
+              className={`${inputClass} max-w-[14rem]`}
+              placeholder="Specialité name (e.g. Génie Logiciel)"
+              value={specialiteForm.nom}
+              onChange={(e) => setSpecialiteForm((p) => ({ ...p, nom: e.target.value }))}
+            />
+            <select
+              className={`${inputClass} max-w-[8rem]`}
+              value={specialiteForm.niveau}
+              onChange={(e) => setSpecialiteForm((p) => ({ ...p, niveau: e.target.value }))}
+            >
+              <option value="">Level (optional)</option>
+              <option value="L1">L1</option>
+              <option value="L2">L2</option>
+              <option value="L3">L3</option>
+              <option value="M1">M1</option>
+              <option value="M2">M2</option>
+            </select>
+            <input
+              className={`${inputClass} max-w-[8rem]`}
+              placeholder="Filière ID"
+              value={specialiteForm.filiereId}
+              onChange={(e) => setSpecialiteForm((p) => ({ ...p, filiereId: e.target.value }))}
+              type="number"
+              min="1"
+            />
+            <button
+              type="button"
+              onClick={createSpecialite}
+              disabled={saving.specialite}
+              className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-surface shadow-sm transition-colors hover:bg-brand-hover disabled:opacity-60"
+            >
+              <Plus className="h-4 w-4" /> {saving.specialite ? 'Saving…' : 'Add specialité'}
+            </button>
+          </div>
+        </div>
+
+        {legacyOptions.specialites.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-edge bg-canvas/40 px-4 py-6 text-center">
+            <p className="text-sm font-semibold text-ink">No specialités yet</p>
+            <p className="mt-1 text-xs text-ink-tertiary">
+              Create your first specialité above — promos cannot be created without one.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Compact search + level filter — keeps the list scannable even
+                when there are dozens of specialités. */}
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <input
+                type="search"
+                value={specialiteSearch}
+                onChange={(e) => setSpecialiteSearch(e.target.value)}
+                placeholder="Search specialités…"
+                className={`${inputClass} flex-1 min-w-[200px] max-w-xs`}
+              />
+              <select
+                value={specialiteNiveauFilter}
+                onChange={(e) => setSpecialiteNiveauFilter(e.target.value)}
+                className={`${inputClass} max-w-[8rem]`}
+              >
+                <option value="">All levels</option>
+                <option value="L1">L1</option>
+                <option value="L2">L2</option>
+                <option value="L3">L3</option>
+                <option value="M1">M1</option>
+                <option value="M2">M2</option>
+              </select>
+              {(specialiteSearch || specialiteNiveauFilter) && (
+                <button
+                  type="button"
+                  onClick={() => { setSpecialiteSearch(''); setSpecialiteNiveauFilter(''); }}
+                  className="text-xs font-medium text-ink-tertiary hover:text-brand"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {(() => {
+              const q = specialiteSearch.trim().toLowerCase();
+              const filtered = legacyOptions.specialites.filter((s) => {
+                if (specialiteNiveauFilter && s.niveau !== specialiteNiveauFilter) return false;
+                if (!q) return true;
+                const name = String(s.nom || '').toLowerCase();
+                const nameEn = String(s.nom_en || '').toLowerCase();
+                return name.includes(q) || nameEn.includes(q);
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <p className="text-xs text-ink-tertiary">
+                    No specialités match your filter.
+                  </p>
+                );
+              }
+
+              return (
+                <>
+                  {/* Scrollable container — caps height so the page stays usable
+                      even with 50+ specialités. Pills wrap naturally inside. */}
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-edge-subtle bg-canvas/30 p-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {filtered.map((s) => {
+                        const promoCount = legacyOptions.promos.filter(
+                          (p) => p.specialiteId === s.id
+                        ).length;
+                        const moduleCount = legacyOptions.modules.filter(
+                          (m) => m.specialiteId === s.id
+                        ).length;
+                        return (
+                          <div
+                            key={`spec-pill-${s.id}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-edge bg-surface px-2 py-1 text-xs text-ink-secondary"
+                            title={`${promoCount} promos · ${moduleCount} modules`}
+                          >
+                            <span className="font-semibold text-ink">{s.nom}</span>
+                            {s.niveau ? (
+                              <span className="inline-flex items-center rounded bg-brand/10 px-1 py-0 text-[9px] font-bold text-brand">
+                                {s.niveau}
+                              </span>
+                            ) : null}
+                            <span className="text-[10px] text-ink-tertiary">
+                              {promoCount}p · {moduleCount}m
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-ink-tertiary">
+                    Showing {filtered.length} of {legacyOptions.specialites.length}
+                  </p>
+                </>
+              );
+            })()}
+          </>
+        )}
+      </section>
+
       {/* ── Step 2 & 3: Promos and Modules tree ──────────────── */}
       {activeYear ? (
         <>
-          <section className="rounded-2xl border border-edge bg-surface p-6 shadow-sm">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <section className="rounded-xl border border-edge bg-surface p-4 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
-                  <Layers className="h-5 w-5" strokeWidth={2} />
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                  <Layers className="h-4 w-4" strokeWidth={2} />
                 </span>
                 <div>
-                  <h2 className="text-lg font-semibold text-ink">
+                  <h2 className="text-sm font-bold text-ink">
                     Step 2 · Promos in {activeYear.name}
                   </h2>
                   <p className="text-sm text-ink-secondary">
@@ -533,6 +813,20 @@ export default function AdminAcademicManagementPage() {
                             {promo.section ? `Section ${promo.section} · ` : ''}
                             {promo.niveau ? `${promo.niveau} · ` : ''}
                             {promo.modules?.length || 0} module(s) · {promo.studentCount || 0} student(s)
+                            {(() => {
+                              const mods = promo.modules || [];
+                              if (mods.length === 0) return null;
+                              const full = mods.filter((m) => moduleAssignmentStatus(m) === 'full').length;
+                              const missing = mods.filter((m) => moduleAssignmentStatus(m) === 'missing').length;
+                              return (
+                                <span className="ml-2 inline-flex items-center gap-1">
+                                  <span className="text-success font-semibold">{full}✓</span>
+                                  {missing > 0 && (
+                                    <span className="text-danger font-semibold">{missing}✗</span>
+                                  )}
+                                </span>
+                              );
+                            })()}
                           </p>
                         </div>
                       </button>
@@ -545,17 +839,21 @@ export default function AdminAcademicManagementPage() {
                           ) : (
                             <div className="overflow-hidden rounded-lg border border-edge">
                               <table className="min-w-full divide-y divide-edge text-sm">
-                                <thead className="bg-canvas/60 text-xs uppercase tracking-wide text-ink-tertiary">
+                                <thead className="bg-canvas/60 text-xs uppercase tracking-wide text-ink-tertiary sticky top-0">
                                   <tr>
                                     <th className="px-3 py-2 text-left">Module</th>
-                                    <th className="px-3 py-2 text-left">Semester</th>
+                                    <th className="px-3 py-2 text-left">Sem.</th>
+                                    <th className="px-3 py-2 text-left">Status</th>
                                     <th className="px-3 py-2 text-left">Teaching slots</th>
-                                    <th className="px-3 py-2 text-right">Action</th>
+                                    <th className="px-3 py-2 text-right">Actions</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-edge">
-                                  {promo.modules.map((mod) => (
-                                    <tr key={`mod-${promo.id}-${mod.id}`} className="bg-surface">
+                                  {promo.modules.map((mod) => {
+                                    const statusKey = moduleAssignmentStatus(mod);
+                                    const statusStyle = STATUS_STYLES[statusKey];
+                                    return (
+                                    <tr key={`mod-${promo.id}-${mod.id}`} className="bg-surface hover:bg-canvas/40 transition-colors">
                                       <td className="px-3 py-2 font-medium text-ink">
                                         <div className="flex items-center gap-2">
                                           <BookOpen className="h-4 w-4 text-brand" />
@@ -564,8 +862,15 @@ export default function AdminAcademicManagementPage() {
                                       </td>
                                       <td className="px-3 py-2 text-ink-secondary">{mod.semestre ?? '—'}</td>
                                       <td className="px-3 py-2">
+                                        <span
+                                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusStyle.className}`}
+                                        >
+                                          {statusStyle.label}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2">
                                         {mod.enseignements.length === 0 ? (
-                                          <span className="text-xs text-ink-tertiary">No teacher assigned</span>
+                                          <span className="text-xs text-ink-tertiary italic">— None</span>
                                         ) : (
                                           <div className="flex flex-wrap gap-1.5">
                                             {mod.enseignements.map((slot) => (
@@ -595,16 +900,27 @@ export default function AdminAcademicManagementPage() {
                                         )}
                                       </td>
                                       <td className="px-3 py-2 text-right">
-                                        <button
-                                          type="button"
-                                          onClick={() => deleteModule(mod.id)}
-                                          className="inline-flex items-center gap-1 rounded-md border border-edge bg-surface px-2 py-1 text-xs text-danger hover:bg-danger/10"
-                                        >
-                                          <Trash2 className="h-3 w-3" /> Delete
-                                        </button>
+                                        <div className="inline-flex items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => setAssignDrawer({ module: mod, promo })}
+                                            className="inline-flex items-center gap-1 rounded-md bg-brand px-2.5 py-1 text-xs font-semibold text-surface hover:bg-brand-hover"
+                                            title="Assign a teacher to this module"
+                                          >
+                                            <Plus className="h-3 w-3" /> Assign
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => deleteModule(mod.id)}
+                                            className="inline-flex items-center gap-1 rounded-md border border-edge bg-surface px-2 py-1 text-xs text-danger hover:bg-danger/10"
+                                            title="Delete module"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
+                                        </div>
                                       </td>
                                     </tr>
-                                  ))}
+                                  );})}
                                 </tbody>
                               </table>
                             </div>
@@ -756,6 +1072,244 @@ export default function AdminAcademicManagementPage() {
           Create or pick an academic year to manage its promos and modules.
         </div>
       )}
+
+      {/* ── Assignment side drawer ─────────────────────────────────────
+          Module + promo context is locked in (no hunting through dropdowns).
+          Admin only picks teacher + type. */}
+      {assignDrawer && (
+        <AssignmentDrawer
+          module={assignDrawer.module}
+          promo={assignDrawer.promo}
+          academicYearId={activeYear?.id}
+          teachers={teachers}
+          onClose={() => setAssignDrawer(null)}
+          onSaved={async () => {
+            await refresh(true);
+            setAssignDrawer(null);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/* ── Side drawer for assigning a teacher to a specific module ──────────
+   Modern slide-in panel, sticky footer, workload preview built inline. */
+function AssignmentDrawer({ module, promo, academicYearId, teachers, onClose, onSaved }) {
+  const [teacherId, setTeacherId] = useState('');
+  const [type, setType] = useState('cours');
+  const [search, setSearch] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const filteredTeachers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return teachers;
+    return teachers.filter((t) => {
+      const fn = `${t.prenom || ''} ${t.nom || ''} ${t.email || ''}`.toLowerCase();
+      return fn.includes(q);
+    });
+  }, [teachers, search]);
+
+  const selectedTeacher = useMemo(
+    () => teachers.find((t) => String(t.id) === String(teacherId)) || null,
+    [teachers, teacherId]
+  );
+
+  // Workload of the selected teacher across all promos (counted from current
+  // tree). Cheap and good enough for an "is this person overloaded?" hint.
+  const teacherWorkload = useMemo(() => {
+    if (!selectedTeacher) return null;
+    const count = (selectedTeacher.enseignements || []).length;
+    const distinctPromos = new Set((selectedTeacher.enseignements || []).map((e) => e.promoId)).size;
+    return { slots: count, promos: distinctPromos };
+  }, [selectedTeacher]);
+
+  const handleSave = async () => {
+    if (!teacherId) {
+      setErr('Pick a teacher first.');
+      return;
+    }
+    if (!academicYearId) {
+      setErr('No active academic year.');
+      return;
+    }
+    setErr('');
+    setSaving(true);
+    try {
+      await academicAPI.createEnseignement({
+        enseignantId: Number(teacherId),
+        moduleId: Number(module.id),
+        promoId: Number(promo.id),
+        type,
+        academicYearId,
+      });
+      if (onSaved) await onSaved();
+    } catch (e) {
+      setErr(e?.message || 'Failed to assign teacher.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-ink/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="h-full w-full max-w-md bg-surface shadow-2xl border-l border-edge flex flex-col animate-in slide-in-from-right duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between px-5 py-4 border-b border-edge-subtle">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-brand">Assign Teacher</p>
+            <h2 className="mt-1 text-base font-bold text-ink truncate">
+              {moduleLabel(module)}
+            </h2>
+            <p className="text-xs text-ink-tertiary truncate">
+              {promoLabel(promo)} {promo.niveau ? `· ${promo.niveau}` : ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-ink-tertiary hover:bg-canvas hover:text-ink transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {err && (
+            <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+              {err}
+            </div>
+          )}
+
+          {/* Teacher search + select */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-secondary mb-1.5">
+              Teacher
+            </label>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search teacher by name or email…"
+              className={inputClass}
+            />
+            <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-edge-subtle divide-y divide-edge-subtle">
+              {filteredTeachers.length === 0 ? (
+                <p className="px-3 py-3 text-xs text-ink-tertiary text-center">No teachers match.</p>
+              ) : (
+                filteredTeachers.map((t) => {
+                  const active = String(t.id) === String(teacherId);
+                  return (
+                    <button
+                      key={`drawer-t-${t.id}`}
+                      type="button"
+                      onClick={() => setTeacherId(String(t.id))}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                        active ? 'bg-brand/10 text-brand' : 'bg-surface text-ink hover:bg-canvas'
+                      }`}
+                    >
+                      <Users className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate font-medium">
+                        {t.prenom} {t.nom}
+                      </span>
+                      <span className="ml-auto text-[11px] text-ink-tertiary truncate max-w-[8rem]">
+                        {t.email}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Type chips */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-secondary mb-1.5">
+              Slot type
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {TYPE_OPTIONS.map((opt) => {
+                const active = type === opt.value;
+                return (
+                  <button
+                    key={`drawer-type-${opt.value}`}
+                    type="button"
+                    onClick={() => setType(opt.value)}
+                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider transition-all ${
+                      active
+                        ? (TYPE_BADGE[opt.value] || 'bg-brand/10 text-brand border-brand/30') + ' ring-2 ring-brand/30'
+                        : 'bg-canvas text-ink-secondary border-edge hover:border-brand/40'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Workload preview (when a teacher is selected) */}
+          {selectedTeacher && teacherWorkload && (
+            <div className="rounded-lg border border-edge bg-canvas/40 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-tertiary mb-1.5">
+                Workload preview
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p className="font-bold text-ink">{teacherWorkload.slots}</p>
+                  <p className="text-[10px] text-ink-tertiary uppercase">Active slots</p>
+                </div>
+                <div>
+                  <p className="font-bold text-ink">{teacherWorkload.promos}</p>
+                  <p className="text-[10px] text-ink-tertiary uppercase">Promos</p>
+                </div>
+              </div>
+              {teacherWorkload.slots >= 8 && (
+                <p className="mt-2 text-[11px] text-warning flex items-center gap-1">
+                  <AlertCircleIcon /> Possible overload — already {teacherWorkload.slots} slots.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Sticky footer */}
+        <div className="px-5 py-3 border-t border-edge-subtle bg-surface-200/30 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-edge bg-surface text-ink hover:bg-surface-200 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !teacherId}
+            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-brand text-surface hover:bg-brand-hover disabled:opacity-50"
+          >
+            {saving ? 'Assigning…' : 'Assign'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Tiny inline warning icon (avoid pulling another lucide import just for this).
+function AlertCircleIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
   );
 }

@@ -134,7 +134,12 @@ export const createModule = async (input: {
   nom_ar: unknown;
   nom_en?: unknown;
   code: unknown;
-  specialiteId: unknown;
+  specialiteId?: unknown;
+  // promoId — preferred parent. When provided, specialiteId is derived from
+  // the promo's specialite. This is what "modules live inside a promo" means
+  // in the new model. The old specialiteId path is still accepted for
+  // backward compatibility with any legacy importers.
+  promoId?: unknown;
   semestre?: unknown;
   volumeCours?: unknown;
   volumeTd?: unknown;
@@ -144,10 +149,37 @@ export const createModule = async (input: {
   description_ar?: unknown;
   description_en?: unknown;
 }) => {
+  // If promoId is given, resolve the parent promo and inherit its specialiteId.
+  // Otherwise fall back to the legacy specialiteId-only flow.
+  let promoIdResolved: number | undefined;
+  let specialiteIdResolved: number | undefined;
+
+  if (input.promoId !== undefined && input.promoId !== null && input.promoId !== "") {
+    promoIdResolved = requirePositiveInt(input.promoId, "promoId");
+    const promo = await prisma.promo.findUnique({
+      where: { id: promoIdResolved },
+      select: { id: true, specialiteId: true },
+    });
+    if (!promo) {
+      throw new ModuleServiceError("INVALID_PROMO", "Promo not found", 404);
+    }
+    if (!promo.specialiteId) {
+      throw new ModuleServiceError(
+        "PROMO_HAS_NO_SPECIALITE",
+        "Selected promo has no specialité — cannot derive the module catalog.",
+        400
+      );
+    }
+    specialiteIdResolved = promo.specialiteId;
+  } else {
+    specialiteIdResolved = requirePositiveInt(input.specialiteId, "specialiteId");
+  }
+
   const data: Prisma.ModuleUncheckedCreateInput = {
     nom_ar: requireString(input.nom_ar, "nom_ar"),
     code: requireString(input.code, "code"),
-    specialiteId: requirePositiveInt(input.specialiteId, "specialiteId"),
+    specialiteId: specialiteIdResolved!,
+    promoId: promoIdResolved,
   };
 
   const nom_en = optionalString(input.nom_en);
@@ -177,6 +209,8 @@ export const createModule = async (input: {
   const description_en = optionalString(input.description_en);
   if (description_en) data.description_en = description_en;
 
+  // Validate the resolved specialité exists. (When derived from a promo this
+  // is already guaranteed, but we re-check defensively for the legacy path.)
   const specialite = await prisma.specialite.findUnique({
     where: { id: data.specialiteId },
     select: { id: true },

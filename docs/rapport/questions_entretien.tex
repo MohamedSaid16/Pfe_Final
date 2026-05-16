@@ -1,0 +1,714 @@
+% ============================================================
+%  QUESTIONS D'ENTRETIEN — 30 Questions + Reponses
+%  Module : Authentification et Gestion des Roles
+%  Etudiant : Ghoulam Mohamed Said
+%  Compatible Overleaf — pdfLaTeX
+% ============================================================
+
+\documentclass[12pt,a4paper,oneside]{report}
+
+% ── Encodage & langue ──────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+
+% ── Mise en page ───────────────────────────────────────────
+\usepackage[top=2.5cm,bottom=2.5cm,left=3cm,right=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+
+% ── Couleurs ───────────────────────────────────────────────
+\usepackage{xcolor}
+\definecolor{GoldenGlow}{RGB}{212,175,55}
+\definecolor{SoftEspresso}{RGB}{62,39,35}
+\definecolor{AccentGray}{RGB}{120,110,100}
+\definecolor{EasyGreen}{RGB}{34,139,34}
+\definecolor{MedBlue}{RGB}{30,80,160}
+\definecolor{HardRed}{RGB}{180,30,30}
+
+% ── Tableaux ───────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+
+% ── Boites colorees ────────────────────────────────────────
+\usepackage[most]{tcolorbox}
+\tcbuselibrary{breakable,skins}
+
+\newtcolorbox{qbox}[2]{
+  colback=#1!6,
+  colframe=#1,
+  fonttitle=\bfseries\color{white},
+  coltitle=#1!30!black,
+  title=#2,
+  arc=4pt,
+  boxrule=0.8pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,
+  breakable
+}
+
+\newtcolorbox{abox}{
+  colback=gray!5,
+  colframe=AccentGray!60,
+  arc=3pt,
+  boxrule=0.5pt,
+  left=6pt,right=6pt,top=4pt,bottom=4pt,
+  breakable
+}
+
+% ── Sections ───────────────────────────────────────────────
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{SoftEspresso}}
+  {\color{GoldenGlow}\chaptertitlename\ \thechapter}
+  {10pt}{\Huge}
+  [\vspace{4pt}\color{GoldenGlow}\titlerule[1.5pt]]
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{SoftEspresso}}
+  {\color{GoldenGlow}\thesection}{1em}{}
+
+% ── En-tetes ───────────────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{SoftEspresso}\nouppercase{\leftmark}}
+\fancyhead[R]{\small\color{GoldenGlow}Questions d'Entretien}
+\fancyfoot[C]{\small\color{AccentGray}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Utilitaires ────────────────────────────────────────────
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{microtype}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=SoftEspresso}
+
+% ── Code inline ────────────────────────────────────────────
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!8},
+  frame=single, framerule=0.4pt,
+  rulecolor=\color{GoldenGlow},
+  breaklines=true,
+  showspaces=false,
+  numbers=none,
+  literate=
+    {é}{{\'{e}}}1 {è}{{\`{e}}}1 {ê}{{\^{e}}}1
+    {à}{{\`{a}}}1 {â}{{\^{a}}}1 {ù}{{\`{u}}}1
+    {î}{{\^{\i}}}1 {ô}{{\^{o}}}1 {ç}{{\c{c}}}1
+}
+
+% ============================================================
+\begin{document}
+% ============================================================
+
+% ════════════════════════════════════════════════════════════
+%  PARTIE I — QUESTIONS
+% ════════════════════════════════════════════════════════════
+
+\chapter*{Questions d'Entretien}
+\addcontentsline{toc}{chapter}{Questions d'Entretien}
+\markboth{Questions d'Entretien}{Questions d'Entretien}
+
+\begin{tcolorbox}[colback=GoldenGlow!8,colframe=GoldenGlow,
+  arc=4pt,boxrule=0.7pt]
+\textbf{Module~:} Authentification et Gestion des Rôles ---
+SGUI Ibn Khaldoun\\
+\textbf{Étudiant~:} Ghoulam Mohamed Said\\
+\textbf{Structure~:} 10 questions faciles · 10 intermédiaires ·
+10 difficiles\\
+\textbf{Réponses~:} Partie II (page~\pageref{ch:reponses})
+\end{tcolorbox}
+
+\vspace{0.5cm}
+
+% ─────────────────────────────────────
+\section*{\textcolor{EasyGreen}{Niveau 1 --- Facile}}
+% ─────────────────────────────────────
+
+\begin{enumerate}[
+  leftmargin=1.5cm,
+  label=\textcolor{EasyGreen}{\textbf{Q\arabic*.}},
+  itemsep=10pt
+]
+
+\item Qu'est-ce que l'\textbf{authentification}~? En quoi diffère-t-elle
+      de l'\textbf{autorisation}~?
+
+\item Qu'est-ce qu'un \textbf{JSON Web Token (JWT)}~? De quelles parties
+      est-il composé~?
+
+\item Pourquoi utilise-t-on \textbf{bcrypt} pour hacher les mots de passe
+      plutôt que MD5 ou SHA-1~?
+
+\item Qu'est-ce que le \textbf{RBAC} (Role-Based Access Control)~?
+      Donnez un exemple concret tiré de votre projet.
+
+\item Que signifie l'en-tête HTTP
+      \texttt{Authorization: Bearer <token>}~? Où est-il utilisé dans
+      votre application~?
+
+\item Qu'est-ce qu'une \textbf{API RESTful}~? Citez ses trois principaux
+      principes.
+
+\item Que se passe-t-il lorsqu'un JWT expire~? Comment le frontend
+      réagit-il dans votre système~?
+
+\item Qu'est-ce que le \textbf{CORS} et pourquoi est-il important pour
+      la sécurité des API~?
+
+\item Quelle est la différence entre stocker un token dans le
+      \textbf{localStorage} et dans un cookie \texttt{HttpOnly}~?
+
+\item Qu'est-ce qu'un \textbf{middleware} dans Express.js~? Donnez un
+      exemple concret tiré de votre projet.
+
+\end{enumerate}
+
+\vspace{0.8cm}
+
+% ─────────────────────────────────────
+\section*{\textcolor{MedBlue}{Niveau 2 --- Intermédiaire}}
+% ─────────────────────────────────────
+
+\begin{enumerate}[
+  leftmargin=1.5cm,
+  label=\textcolor{MedBlue}{\textbf{Q\arabic*.}},
+  start=11,
+  itemsep=10pt
+]
+
+\item Expliquez la \textbf{structure détaillée} d'un JWT~: que contient
+      chaque partie et comment la signature garantit-elle l'intégrité~?
+
+\item Décrivez le \textbf{flux d'authentification complet} dans votre
+      système, depuis la saisie des identifiants jusqu'à l'accès à une
+      ressource protégée. Citez chaque étape.
+
+\item Qu'est-ce qu'un \textbf{ORM}~? Quels avantages \textbf{Prisma}
+      offre-t-il par rapport à des requêtes SQL brutes~?
+
+\item Comment avez-vous implémenté le \textbf{contrôle d'accès par rôle}
+      dans votre API~? Montrez un exemple avec \texttt{requireRole}.
+
+\item Qu'est-ce que l'\textbf{injection SQL}~? Comment Prisma vous
+      protège-t-il contre cette attaque~?
+
+\item Qu'est-ce que le \textbf{rate-limiting}~? Dans quel contexte
+      l'avez-vous utilisé et pourquoi est-ce important~?
+
+\item Qu'est-ce que le \textbf{Context API} de React~? Comment
+      l'avez-vous utilisé pour gérer l'état d'authentification~?
+
+\item Comment fonctionne un \textbf{intercepteur Axios}~? Quel problème
+      double résout-il dans votre application~?
+
+\item Qu'est-ce qu'une \textbf{SPA} (Single Page Application)~? Quelles
+      implications cela a-t-il pour la gestion de l'authentification~?
+
+\item Expliquez la différence entre un \textbf{Access Token} et un
+      \textbf{Refresh Token}. Avez-vous implémenté les deux dans votre
+      projet~?
+
+\end{enumerate}
+
+\vspace{0.8cm}
+
+% ─────────────────────────────────────
+\section*{\textcolor{HardRed}{Niveau 3 --- Difficile}}
+% ─────────────────────────────────────
+
+\begin{enumerate}[
+  leftmargin=1.5cm,
+  label=\textcolor{HardRed}{\textbf{Q\arabic*.}},
+  start=21,
+  itemsep=10pt
+]
+
+\item Quelles sont les \textbf{failles de sécurité} liées au stockage du
+      JWT dans le localStorage~? Quelle alternative auriez-vous pu choisir
+      et pourquoi~?
+
+\item Expliquez le problème de \textbf{révocation de token JWT}. Comment
+      l'avez-vous adressé ou contourné dans votre système~?
+
+\item Comparez l'architecture \textbf{JWT stateless} à l'architecture
+      \textbf{session-based stateful}~: avantages, inconvénients, et dans
+      quels cas préférer l'une ou l'autre~?
+
+\item Qu'est-ce qu'une attaque \textbf{CSRF}~? Pourquoi les JWT en
+      en-tête \texttt{Authorization} sont-ils naturellement résistants à
+      cette attaque~?
+
+\item Si un administrateur modifie le \textbf{rôle d'un utilisateur} dont
+      le token est encore valide, comment votre système garantit-il que ce
+      changement est pris en compte immédiatement~?
+
+\item Expliquez le \textbf{principe du moindre privilège}
+      (\textit{Least Privilege}). Comment l'avez-vous appliqué dans la
+      conception de votre matrice RBAC~?
+
+\item Comment concevriez-vous un système de \textbf{journalisation
+      d'audit} pour tracer toutes les actions sensibles (connexion,
+      changement de rôle, suppression de données)~?
+
+\item Décrivez une attaque par \textbf{force brute} sur votre endpoint
+      \texttt{/login}. Quelles mesures avez-vous mises en place~? Sont-elles
+      suffisantes selon vous~?
+
+\item Votre système utilise \textbf{bcrypt avec un coût de~12}. Comment ce
+      facteur affecte-t-il la sécurité et les performances~? Quel coût
+      recommanderiez-vous en production en~2025~?
+
+\item Votre application doit supporter \textbf{10~000 utilisateurs
+      simultanés}. Quels goulots d'étranglement anticipez-vous dans votre
+      architecture actuelle et comment les résoudriez-vous~?
+
+\end{enumerate}
+
+\newpage
+
+% ════════════════════════════════════════════════════════════
+%  PARTIE II — REPONSES
+% ════════════════════════════════════════════════════════════
+
+\chapter*{Réponses aux Questions d'Entretien}
+\label{ch:reponses}
+\addcontentsline{toc}{chapter}{Reponses aux Questions d'Entretien}
+\markboth{Reponses}{Reponses}
+
+% ─────────────────────────────────────
+\section*{\textcolor{EasyGreen}{Réponses --- Niveau 1 (Facile)}}
+% ─────────────────────────────────────
+
+\begin{qbox}{EasyGreen}{R1 --- Authentification vs. Autorisation}
+L'\textbf{authentification} vérifie l'identité~: «~Êtes-vous bien qui
+vous prétendez être~?~». Elle repose sur des identifiants (e-mail + mot
+de passe) vérifiés contre la base de données.
+
+L'\textbf{autorisation} intervient \textit{après} et détermine ce que
+l'utilisateur peut faire~: «~Avez-vous le droit d'accéder à cette
+ressource~?~». Un enseignant authentifié n'est pas autorisé à accéder
+à la liste de tous les utilisateurs (route admin uniquement).
+\end{qbox}
+
+\begin{qbox}{EasyGreen}{R2 --- JWT et ses trois parties}
+Un JWT (RFC 7519) est composé de trois parties séparées par un point~:
+\begin{enumerate}
+  \item \textbf{Header}~: algorithme de signature
+        (\texttt{\{alg:HS256, typ:JWT\}}) en Base64Url.
+  \item \textbf{Payload}~: claims~: \texttt{sub} (identifiant),
+        \texttt{role}, \texttt{iat} (émission), \texttt{exp}
+        (expiration). Encodé en Base64Url mais \textbf{non chiffré}.
+  \item \textbf{Signature}~: HMAC-SHA256(header + payload, SECRET).
+        Garantit l'intégrité du token.
+\end{enumerate}
+\end{qbox}
+
+\begin{qbox}{EasyGreen}{R3 --- bcrypt vs MD5/SHA-1}
+MD5 et SHA-1 sont rapides~: un GPU peut tester des milliards de
+combinaisons par seconde.
+
+\textbf{bcrypt} est conçu pour les mots de passe~:
+\begin{itemize}
+  \item \textbf{Sel aléatoire} intégré~: empêche les tables arc-en-ciel.
+  \item \textbf{Facteur de coût 12}~: environ 250~ms par vérification,
+        rendant la force brute prohibitivement longue.
+\end{itemize}
+\end{qbox}
+
+\begin{qbox}{EasyGreen}{R4 --- RBAC}
+Le RBAC assigne des permissions à des \textit{rôles}, et les utilisateurs
+héritent des permissions de leur rôle.
+
+Dans notre SGUI~:
+\begin{itemize}
+  \item \texttt{admin}   --- accès complet à toutes les routes.
+  \item \texttt{teacher} --- propose des sujets PFE, gère son jury.
+  \item \texttt{student} --- soumet des réclamations, consulte les
+        annonces.
+\end{itemize}
+\end{qbox}
+
+\begin{qbox}{EasyGreen}{R5 --- Authorization Bearer}
+C'est la méthode standard (RFC 6750) pour transmettre un token d'accès.
+\textit{Bearer} signifie «~porteur~»~: quiconque possède ce token est
+présumé autorisé. Notre middleware \texttt{requireAuth} extrait la valeur
+après «~Bearer~» et la vérifie via \texttt{jwt.verify()}.
+\end{qbox}
+
+\begin{qbox}{EasyGreen}{R6 --- API RESTful}
+Une API RESTful respecte~:
+\begin{itemize}
+  \item \textbf{Stateless}~: chaque requête contient toutes les
+        informations nécessaires.
+  \item \textbf{Méthodes HTTP standard}~: GET, POST, PUT, DELETE.
+  \item \textbf{Ressources identifiées}~: URI unique par ressource
+        (\texttt{/api/users/:id}).
+\end{itemize}
+\end{qbox}
+
+\begin{qbox}{EasyGreen}{R7 --- JWT expiré}
+Le backend retourne \texttt{401 TOKEN\_INVALID\_OR\_EXPIRED}.
+L'intercepteur Axios détecte ce code et~:
+\begin{enumerate}
+  \item Supprime le token du \texttt{localStorage}.
+  \item Redirige automatiquement vers \texttt{/login}.
+\end{enumerate}
+\end{qbox}
+
+\begin{qbox}{EasyGreen}{R8 --- CORS}
+Le CORS bloque par défaut les requêtes HTTP vers un domaine différent.
+Sans configuration, le frontend sur \texttt{localhost:5173} ne pourrait
+pas appeler l'API sur \texttt{localhost:5000}. En production, CORS
+protège l'API contre les appels depuis des sites malveillants non
+autorisés.
+\end{qbox}
+
+\begin{qbox}{EasyGreen}{R9 --- localStorage vs cookie HttpOnly}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Critère} & \textbf{localStorage} & \textbf{Cookie HttpOnly} \\
+\midrule
+Accès JavaScript & Oui   & Non    \\
+Risque XSS       & Elevé & Faible \\
+Risque CSRF      & Nul   & Modéré \\
+Simplicité       & Haute & Moyenne\\
+\bottomrule
+\end{tabular}
+
+\vspace{4pt}
+Nous avons choisi le localStorage pour la simplicité dans ce contexte
+académique. En production, un cookie \texttt{HttpOnly + Secure +
+SameSite=Strict} est recommandé.
+\end{qbox}
+
+\begin{qbox}{EasyGreen}{R10 --- Middleware Express}
+Un middleware s'intercale dans le pipeline de traitement d'une requête,
+avec accès à \texttt{req}, \texttt{res} et \texttt{next()}.
+
+Notre \texttt{requireAuth}~:
+\begin{itemize}
+  \item Vérifie la présence du token JWT.
+  \item Si valide~: attache \texttt{req.user} et appelle
+        \texttt{next()}.
+  \item Si invalide~: retourne \texttt{401} et stoppe le pipeline.
+\end{itemize}
+\end{qbox}
+
+\vspace{0.5cm}
+
+% ─────────────────────────────────────
+\section*{\textcolor{MedBlue}{Réponses --- Niveau 2 (Intermédiaire)}}
+% ─────────────────────────────────────
+
+\begin{qbox}{MedBlue}{R11 --- Structure détaillée d'un JWT}
+\begin{itemize}
+  \item \textbf{Header}~: \texttt{\{alg:HS256, typ:JWT\}} en Base64Url.
+        Précise l'algorithme.
+  \item \textbf{Payload}~: \texttt{\{sub:uuid, role:admin, iat:1234,
+        exp:1235\}}. \textit{Attention~: non chiffré, seulement encodé.}
+        Ne jamais y mettre de données sensibles.
+  \item \textbf{Signature}~: HMAC-SHA256(base64url(header) + "." +
+        base64url(payload), SECRET). Toute modification invalide la
+        signature, détectée et rejetée par le serveur.
+\end{itemize}
+\end{qbox}
+
+\begin{qbox}{MedBlue}{R12 --- Flux d'authentification complet}
+\begin{enumerate}
+  \item L'utilisateur saisit e-mail + mot de passe sur LoginPage.
+  \item \texttt{POST /api/auth/login} envoyé au backend.
+  \item \texttt{prisma.user.findUnique(\{email\})} recherche le compte.
+  \item \texttt{bcrypt.compare(password, passwordHash)} vérifie le mdp.
+  \item \texttt{jwt.sign(\{sub, role\}, SECRET, \{expiresIn:'24h'\})}
+        génère le token.
+  \item Le token est stocké dans le \texttt{localStorage}.
+  \item Chaque requête suivante~: l'intercepteur Axios ajoute
+        \texttt{Authorization: Bearer <token>}.
+  \item \texttt{requireAuth} decode et vérifie le token.
+  \item \texttt{requireRole} vérifie que le rôle est autorisé.
+  \item Le contrôleur traite la requête et retourne la réponse.
+\end{enumerate}
+\end{qbox}
+
+\begin{qbox}{MedBlue}{R13 --- ORM et avantages de Prisma}
+Un \textbf{ORM} fait le pont entre le code objet et la base relationnelle.
+
+Avantages de Prisma~:
+\begin{itemize}
+  \item \textbf{Schéma déclaratif}~: \texttt{schema.prisma} comme
+        source de vérité unique.
+  \item \textbf{Client typé}~: autocomplétion, détection d'erreurs à la
+        compilation.
+  \item \textbf{Requêtes paramétrées}~: protection native contre
+        l'injection SQL.
+  \item \textbf{Migrations versionnées}~: évolution contrôlée du schéma.
+\end{itemize}
+\end{qbox}
+
+\begin{qbox}{MedBlue}{R14 --- Implémentation RBAC avec requireRole}
+\texttt{requireRole} est une fonction d'ordre supérieur~:
+\texttt{requireRole(['admin'])} retourne un middleware qui vérifie
+\texttt{req.user.role}.
+
+\begin{lstlisting}
+router.get('/users',
+  requireAuth,            // Verifier le JWT
+  requireRole(['admin']), // Verifier le role
+  listUsers               // Executer le controleur
+);
+\end{lstlisting}
+Si le rôle ne correspond pas~: \texttt{403 FORBIDDEN}.
+\end{qbox}
+
+\begin{qbox}{MedBlue}{R15 --- Injection SQL et protection Prisma}
+L'injection SQL consiste à insérer du code SQL malveillant dans un champ
+(ex.~: \texttt{' OR '1'='1} dans le champ email pour bypasser
+l'authentification).
+
+Prisma protège via des \textbf{requêtes préparées}~: les données
+utilisateur ne sont jamais concaténées dans une chaîne SQL --- elles
+sont toujours passées comme paramètres typés.
+\end{qbox}
+
+\begin{qbox}{MedBlue}{R16 --- Rate-limiting}
+Le rate-limiting limite le nombre de requêtes d'un client dans un
+intervalle donné. Nous l'appliquons sur \texttt{POST /auth/login}~:
+maximum 20 tentatives par IP par 15 minutes.
+
+Au-delà~: \texttt{429 Too Many Requests}. Cela rend les attaques par
+dictionnaire prohibitivement lentes.
+\end{qbox}
+
+\begin{qbox}{MedBlue}{R17 --- Context API React}
+Le Context API permet de partager des données sans \textit{prop
+drilling}. Notre \texttt{AuthContext} expose~:
+\begin{itemize}
+  \item \texttt{user}~: objet utilisateur ou \texttt{null}.
+  \item \texttt{login(email, password)}~: authentifie et stocke le token.
+  \item \texttt{logout()}~: efface le token et réinitialise l'état.
+  \item \texttt{loading}~: indique si la vérification initiale est en
+        cours.
+\end{itemize}
+Tout composant dans \texttt{AuthProvider} accède via \texttt{useAuth()}.
+\end{qbox}
+
+\begin{qbox}{MedBlue}{R18 --- Intercepteur Axios}
+Un intercepteur s'exécute automatiquement sur chaque requête/réponse~:
+\begin{itemize}
+  \item \textbf{Request}~: lit le token et l'injecte dans l'en-tête
+        \texttt{Authorization} --- évite de le répéter dans chaque
+        appel API.
+  \item \textbf{Response}~: si \texttt{401}, efface le token et
+        redirige vers \texttt{/login} automatiquement.
+\end{itemize}
+\end{qbox}
+
+\begin{qbox}{MedBlue}{R19 --- SPA et authentification}
+Dans une SPA, il n'y a pas de rechargement entre navigations, donc~:
+\begin{itemize}
+  \item L'état d'auth est géré côté client (Context API).
+  \item Les routes privées sont bloquées par \texttt{ProtectedRoute}.
+  \item \textbf{Important}~: le backend doit \textit{toujours} vérifier
+        le token --- un attaquant peut appeler l'API directement sans
+        passer par React.
+\end{itemize}
+\end{qbox}
+
+\begin{qbox}{MedBlue}{R20 --- Access Token vs. Refresh Token}
+\begin{itemize}
+  \item \textbf{Access Token}~: durée courte (15 min--24h), utilisé sur
+        chaque requête. En cas de vol, exposition limitée.
+  \item \textbf{Refresh Token}~: durée longue (7--30 jours), utilisé
+        uniquement pour renouveler l'Access Token sans reconnexion.
+\end{itemize}
+Notre système utilise uniquement un Access Token de 24h (pour simplifier
+l'implémentation). Les Refresh Tokens sont une perspective
+d'amélioration.
+\end{qbox}
+
+\vspace{0.5cm}
+
+% ─────────────────────────────────────
+\section*{\textcolor{HardRed}{Réponses --- Niveau 3 (Difficile)}}
+% ─────────────────────────────────────
+
+\begin{qbox}{HardRed}{R21 --- Vulnerabilites du localStorage}
+Le localStorage est accessible depuis JavaScript~: une attaque XSS peut
+lire et exfiltrer le token.
+
+\textbf{Alternative}~: cookie avec~:
+\begin{itemize}
+  \item \texttt{HttpOnly}~: inaccessible depuis JavaScript.
+  \item \texttt{Secure}~: transmis uniquement en HTTPS.
+  \item \texttt{SameSite=Strict}~: protection anti-CSRF.
+\end{itemize}
+Choix localStorage justifié par la simplicité dans ce contexte
+académique.
+\end{qbox}
+
+\begin{qbox}{HardRed}{R22 --- Revocation de token JWT}
+Un JWT est valide jusqu'à expiration même après déconnexion --- problème
+inhérent au caractère stateless.
+
+\textbf{Stratégies~:}
+\begin{enumerate}
+  \item \textbf{Durée courte}~: 15--60 min + Refresh Tokens.
+  \item \textbf{Blacklist Redis}~: tokens révoqués stockés en cache.
+        Réintroduit de l'état côté serveur.
+  \item \textbf{Vérification BDD}~: sur routes critiques, vérifier que
+        \texttt{user.isActive} et que le rôle n'a pas changé.
+\end{enumerate}
+Notre système applique la stratégie 3 sur les opérations sensibles.
+\end{qbox}
+
+\begin{qbox}{HardRed}{R23 --- JWT Stateless vs. Session Stateful}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Critere}   & \textbf{JWT Stateless} & \textbf{Session Stateful} \\
+\midrule
+Etat serveur       & Aucun                  & BDD / Redis requis        \\
+Scalabilite        & Horizontale naturelle  & Session partagee requise  \\
+Revocation         & Difficile              & Triviale                  \\
+Performance        & Verification locale    & Lecture BDD par requete   \\
+Payload visible    & Oui (Base64)           & Non (opaque)              \\
+\bottomrule
+\end{tabular}
+
+\vspace{4pt}
+JWT est préféré pour les microservices. Les sessions conviennent mieux
+quand la révocation instantanée est critique (ex.~: banques).
+\end{qbox}
+
+\begin{qbox}{HardRed}{R24 --- CSRF et resistance naturelle du JWT Bearer}
+CSRF incite le navigateur à envoyer une requête authentifiée à l'insu
+de l'utilisateur (fonctionne avec les cookies, envoyés automatiquement).
+
+Les JWT en en-tête \texttt{Authorization} résistent car~:
+\begin{enumerate}
+  \item Le navigateur n'envoie \textbf{jamais automatiquement} un
+        en-tête personnalisé en cross-origin.
+  \item Seul le JavaScript légitime peut lire le localStorage.
+  \item Un site malveillant ne peut pas accéder au localStorage d'un
+        autre domaine (Same-Origin Policy).
+\end{enumerate}
+\end{qbox}
+
+\begin{qbox}{HardRed}{R25 --- Changement de role et token en cours}
+Sur les routes critiques, une vérification en base de données confirme
+que le rôle est toujours valide~:
+
+\begin{lstlisting}
+const dbUser = await prisma.user.findUnique({
+  where: { id: req.user.sub }
+});
+if (!dbUser?.isActive || dbUser.role !== req.user.role)
+  return res.status(403).json({ error: 'ROLE_CHANGED_RELOGIN' });
+\end{lstlisting}
+
+Cela a un coût en performance mais garantit la cohérence sur les
+opérations sensibles.
+\end{qbox}
+
+\begin{qbox}{HardRed}{R26 --- Principe du moindre privilege}
+Chaque entité ne doit disposer que des permissions strictement
+nécessaires.
+
+Application dans le SGUI~:
+\begin{itemize}
+  \item Un \texttt{student} accède uniquement à ses propres réclamations.
+  \item Un \texttt{teacher} modifie uniquement ses sujets PFE (et
+        seulement quand \texttt{status === 'propose'}).
+  \item Même l'\texttt{admin} ne retourne jamais le
+        \texttt{passwordHash} dans les réponses API.
+\end{itemize}
+\end{qbox}
+
+\begin{qbox}{HardRed}{R27 --- Journalisation d'audit}
+Conception recommandée~:
+\begin{enumerate}
+  \item \textbf{Modele}~:
+        \texttt{(id, userId, action, targetId, metadata, timestamp)}.
+  \item \textbf{Actions}~: connexion/déconnexion, changement de rôle,
+        création/suppression de compte, validation PFE, décision
+        réclamation.
+  \item \textbf{Stockage}~: table PostgreSQL en append-only ou service
+        externe (Elasticsearch).
+  \item \textbf{Middleware}~: appelé dans chaque contrôleur sensible.
+\end{enumerate}
+
+\begin{lstlisting}
+await prisma.auditLog.create({
+  data: {
+    userId,
+    action,
+    metadata: JSON.stringify(metadata),
+    timestamp: new Date()
+  }
+});
+\end{lstlisting}
+\end{qbox}
+
+\begin{qbox}{HardRed}{R28 --- Attaque par force brute sur /login}
+\textbf{Deroulement}~: l'attaquant envoie des milliers de requêtes
+\texttt{POST /login} en testant des mots de passe pour un email cible.
+
+\textbf{Mesures implementees}~:
+\begin{itemize}
+  \item Rate-limiting~: 20 requêtes / 15 min par IP.
+  \item bcrypt coût 12~: \textasciitilde250 ms par vérification.
+  \item Messages génériques~: \texttt{INVALID\_CREDENTIALS} sans
+        révéler si l'email existe.
+\end{itemize}
+
+\textbf{Insuffisances}~: le rate-limiting par IP est contournable via
+des proxies. Améliorations~: CAPTCHA après N échecs, blocage temporaire
+du compte, notification par email.
+\end{qbox}
+
+\begin{qbox}{HardRed}{R29 --- Facteur de cout bcrypt en 2025}
+Le facteur de coût détermine $2^{\text{coût}}$ itérations~:
+
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Cout} & \textbf{Duree} & \textbf{Recommandation} \\
+\midrule
+10 & \textasciitilde64 ms  & Trop rapide, a eviter  \\
+12 & \textasciitilde250 ms & Recommande en 2025     \\
+14 & \textasciitilde1 s    & Systemes tres sensibles\\
+\bottomrule
+\end{tabular}
+
+\vspace{4pt}
+Règle~: choisir le coût tel que le hachage prenne 100--500 ms sur le
+serveur de production, à réévaluer tous les 2 ans.
+\end{qbox}
+
+\begin{qbox}{HardRed}{R30 --- Scalabilite a 10 000 utilisateurs}
+\textbf{Goulots anticipes}~:
+\begin{enumerate}
+  \item \textbf{Base de donnees}~: PostgreSQL single-instance devient
+        bottleneck. Solution~: PgBouncer (connection pooling), replicas
+        de lecture, index optimises.
+  \item \textbf{bcrypt sur /login}~: 250 ms $\times$ 10~000 = CPU
+        significatif. Solution~: worker threads ou file asynchrone
+        (Bull + Redis).
+  \item \textbf{JWT stateless}~: verification locale, pas de probleme.
+  \item \textbf{API}~: scalable horizontalement derriere un load
+        balancer (Nginx) devant N instances Node.js.
+\end{enumerate}
+
+\textbf{Architecture cible}~:
+Nginx $\rightarrow$ N $\times$ Node.js $\rightarrow$ PostgreSQL +
+PgBouncer + Redis.
+\end{qbox}
+
+% ============================================================
+\end{document}
+% ============================================================

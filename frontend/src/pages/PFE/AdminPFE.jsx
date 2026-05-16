@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  FileText, Users, CalendarDays, Settings2, CheckCircle2, XCircle, Plus, Filter, Loader2,
+  FileText, Users, CalendarDays, Settings2, CheckCircle2, XCircle, Plus, Filter, Loader2, Pencil,
 } from 'lucide-react';
 import {
   SectionHeader, Shimmer, EmptyState, ErrorBanner, CapacityBar, StatusBadge,
-  getUserDisplayName, LeftNav, PageHeader, SUBJECT_STATUS, normalizeApiError, FilterPills
+  getUserDisplayName, LeftNav, PageHeader, SUBJECT_STATUS, normalizeApiError, FilterPills,
+  EditSubjectModal, EditGroupModal,
 } from './SharedPFEUI';
 import request from '../../services/api';
 import PFEConfigCard from '../../components/pfe/admin/PFEConfigCard';
@@ -31,6 +32,7 @@ function SkeletonList({ count = 3 }) {
 }
 
 function AdminValidationQueue({ subjects, loading, error, onValidate, onReject, onRetry }) {
+  const [editingSubject, setEditingSubject] = useState(null);
   const [filter, setFilter] = useState('all');
 
   const allSubjects = Array.isArray(subjects) ? subjects : [];
@@ -92,16 +94,26 @@ function AdminValidationQueue({ subjects, loading, error, onValidate, onReject, 
                             <h3 className="text-sm font-semibold text-ink truncate">{subject.titre_ar || subject.titre_en || `Subject #${subject.id}`}</h3>
                             <StatusBadge status={subject.status} />
                           </div>
-                          {isPending && (
-                            <div className="flex gap-2 flex-shrink-0">
-                              <button type="button" onClick={() => onValidate(subject.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-surface hover:opacity-90">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Approve
-                              </button>
-                              <button type="button" onClick={() => onReject(subject.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-semibold text-surface hover:opacity-90">
-                                <XCircle className="w-3.5 h-3.5" /> Reject
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex gap-2 flex-shrink-0">
+                            {/* Admin can edit any subject at any status */}
+                            <button
+                              type="button"
+                              onClick={() => setEditingSubject(subject)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:bg-surface-200"
+                            >
+                              <Pencil className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            {isPending && (
+                              <>
+                                <button type="button" onClick={() => onValidate(subject.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-surface hover:opacity-90">
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                                </button>
+                                <button type="button" onClick={() => onReject(subject.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-semibold text-surface hover:opacity-90">
+                                  <XCircle className="w-3.5 h-3.5" /> Reject
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                         <p className="text-sm text-ink-secondary line-clamp-2 mb-3">{subject.description_ar || subject.description_en || 'No description provided.'}</p>
                         <div className="flex flex-wrap items-center gap-4 text-xs text-ink-tertiary">
@@ -120,6 +132,15 @@ function AdminValidationQueue({ subjects, loading, error, onValidate, onReject, 
             </div>
           )}
         </>
+      )}
+
+      {/* Edit modal — admin can edit any subject at any status */}
+      {editingSubject && (
+        <EditSubjectModal
+          subject={editingSubject}
+          onClose={() => setEditingSubject(null)}
+          onSaved={async () => { if (onRetry) await onRetry(); }}
+        />
       )}
     </div>
   );
@@ -220,6 +241,7 @@ function GroupDetailsModal({ group, onClose }) {
 function AdminGroupsOverview({ groups, loading, error, onRetry }) {
   const [showModal, setShowModal] = useState(false);
   const [selectedGroupDetails, setSelectedGroupDetails] = useState(null);
+  const [editingGroup, setEditingGroup] = useState(null);
   const [formData, setFormData] = useState({ nom_ar: '', nom_en: '', coEncadrantId: '', members: [{ etudiantId: '', role: 'chef_groupe' }] });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -297,9 +319,19 @@ function AdminGroupsOverview({ groups, loading, error, onRetry }) {
                       <h3 className="text-sm font-semibold text-ink group-hover:text-brand transition-colors">{group.nom_ar || group.nom_en || `Group #${group.id}`}</h3>
                       <p className="mt-0.5 text-xs text-ink-tertiary">{memberCount} member{memberCount !== 1 ? 's' : ''}</p>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
-                      <span className="w-1.5 h-1.5 rounded-full bg-success" /> Active
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setEditingGroup(group); }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-edge bg-surface px-2.5 py-1 text-xs font-semibold text-ink hover:bg-surface-200"
+                        title="Edit group"
+                      >
+                        <Pencil className="w-3 h-3" /> Edit
+                      </button>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success" /> Active
+                      </span>
+                    </div>
                   </div>
                   <div className="rounded-xl bg-surface-200/60 px-3 py-2.5 mb-3 group-hover:bg-brand/5 transition-colors">
                     <p className="text-xs font-medium text-ink-secondary mb-0.5">Subject</p>
@@ -324,6 +356,15 @@ function AdminGroupsOverview({ groups, loading, error, onRetry }) {
           </div>
           <GroupDetailsModal group={selectedGroupDetails} onClose={() => setSelectedGroupDetails(null)} />
         </>
+      )}
+
+      {/* Edit group modal — admin only, any group, any time */}
+      {editingGroup && (
+        <EditGroupModal
+          group={editingGroup}
+          onClose={() => setEditingGroup(null)}
+          onSaved={async () => { if (onRetry) await onRetry(); }}
+        />
       )}
 
       {showModal && (

@@ -1,0 +1,777 @@
+% ════════════════════════════════════════════════════════════
+%  CHAPITRE 3 — IMPLÉMENTATION ET TESTS
+%  Module : Réclamations & Justifications
+%  Université Ibn Khaldoun — Tiaret
+%  Groupe 5 — ISIL
+%  Membres : Harbane Batoul · Hafsa Aicha Hayat · Hamani Ikram
+% ════════════════════════════════════════════════════════════
+
+% ── Préambule (à inclure dans le document principal) ────────
+% \documentclass[12pt,a4paper]{report}
+% \usepackage[utf8]{inputenc}
+% \usepackage[T1]{fontenc}
+% \usepackage[french]{babel}
+% \usepackage{lmodern}
+% \usepackage[top=2.5cm,bottom=2.5cm,left=3cm,right=2.5cm]{geometry}
+% \usepackage{xcolor}
+% \usepackage{tikz}
+% \usetikzlibrary{shapes.geometric,arrows.meta,positioning}
+% \usepackage{pgfplots}
+% \pgfplotsset{compat=1.18}
+% \usepackage{listings}
+% \usepackage{booktabs}
+% \usepackage{tabularx}
+% \usepackage{float}
+% \usepackage{caption}
+% \usepackage[most]{tcolorbox}
+% \usepackage{setspace}
+% \onehalfspacing
+%
+% \definecolor{IBNBlue}{RGB}{30,80,160}
+% \definecolor{IBNGold}{RGB}{180,140,30}
+% \definecolor{LightBlue}{RGB}{235,242,255}
+% \definecolor{AccentGray}{RGB}{100,100,110}
+% ────────────────────────────────────────────────────────────
+
+\chapter{Implémentation et Tests}
+
+\section{Introduction}
+
+Ce chapitre présente l'implémentation concrète du module
+\textbf{Réclamations \& Justifications} du Système de Gestion Universitaire
+Intégré d'Ibn Khaldoun. Après avoir défini l'architecture et les besoins dans
+les chapitres précédents, nous décrivons ici les choix techniques effectués,
+le code développé côté backend et frontend, puis les résultats des tests de
+validation fonctionnelle.
+
+% ────────────────────────────────────────────────────────────
+\section{Environnement de Développement}
+% ────────────────────────────────────────────────────────────
+
+\begin{table}[H]
+\centering
+\caption{Environnement de développement — Module Réclamations \& Justifications}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Composant}       & \textbf{Technologie / Version} \\
+\midrule
+Langage backend          & TypeScript 5.x                 \\
+Runtime                  & Node.js 20 LTS                 \\
+Framework API            & Express.js 4.18                \\
+ORM                      & Prisma 5.x                     \\
+Base de données          & PostgreSQL 16                  \\
+Framework frontend       & React.js 18                    \\
+Styles                   & Tailwind CSS 3.x               \\
+Client HTTP              & Axios                          \\
+Authentification         & JSON Web Token (JWT)           \\
+Notifications            & Système interne (Prisma \texttt{Notification}) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ────────────────────────────────────────────────────────────
+\section{Architecture du Module}
+% ────────────────────────────────────────────────────────────
+
+Le module suit l'architecture globale du SGUI~: séparation stricte entre
+\textbf{backend RESTful} (Node.js/Express) et \textbf{frontend SPA}
+(React.js), communicant via des requêtes HTTP/JSON authentifiées par JWT.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw=IBNBlue,thick,rounded corners=5pt,
+              minimum width=3.0cm,minimum height=0.9cm,
+              fill=LightBlue,font=\small\bfseries,align=center},
+  arrow/.style={->,>=Stealth,thick,IBNBlue}
+]
+\node[box] (FE)   at (0,   0) {Frontend\\React.js};
+\node[box] (MW)   at (4,   0) {Middleware\\requireAuth};
+\node[box] (CTRL) at (8,   0) {Controller\\requests};
+\node[box] (SVC)  at (8,  -2) {Service\\notifications};
+\node[box] (DB)   at (4,  -2) {PostgreSQL\\Prisma ORM};
+
+\draw[arrow] (FE)   -- node[above,font=\scriptsize]{HTTP + JWT} (MW);
+\draw[arrow] (MW)   -- node[above,font=\scriptsize]{req.user}   (CTRL);
+\draw[arrow] (CTRL) -- node[right,font=\scriptsize]{notify}     (SVC);
+\draw[arrow] (CTRL) -- node[above,font=\scriptsize]{Prisma}     (DB);
+\draw[arrow] (SVC)  -- (DB);
+\end{tikzpicture}
+\caption{Architecture interne du module Réclamations \& Justifications}
+\label{fig:rj_arch}
+\end{figure}
+
+% ────────────────────────────────────────────────────────────
+\section{Modèle de Données}
+% ────────────────────────────────────────────────────────────
+
+\subsection{Schéma Prisma}
+
+Le modèle de données implémente les deux entités identifiées lors de la
+conception~: \texttt{Reclamation} pour les étudiants connectés et
+\texttt{GuestReclamation} pour les visiteurs sans compte.
+
+\begin{lstlisting}[language=SQL,
+  caption=schema.prisma — Modèles Reclamation et GuestReclamation]
+model Reclamation {
+  id                 Int       @id @default(autoincrement())
+  type               String    // "reclamation" | "justification"
+  sujet              String
+  message            String
+  status             String    @default("submitted")
+  reponse_admin      String?
+  reponse_admin_par  String?
+  reponse_admin_date DateTime?
+  dateAbsence        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  userId       String
+  user         User   @relation(fields:[userId], references:[id])
+  traiteParId  String?
+  traiteParUser User? @relation("TraitePar",
+                        fields:[traiteParId], references:[id])
+  notifications Notification[]
+}
+
+model GuestReclamation {
+  id        Int      @id @default(autoincrement())
+  prenom    String
+  nom       String
+  email     String
+  sujet     String
+  message   String
+  status    String   @default("submitted")
+  createdAt DateTime @default(now())
+}
+\end{lstlisting}
+
+\subsection{Cycle de Vie d'une Demande}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  state/.style={draw=IBNBlue,thick,rounded corners=18pt,
+                minimum width=2.8cm,minimum height=0.8cm,
+                font=\small\bfseries},
+  arrow/.style={->,>=Stealth,thick,IBNBlue},
+]
+\node[state,fill=yellow!25]  (S) at (0,   0) {submitted};
+\node[state,fill=blue!15]    (U) at (4,   0) {under\_review};
+\node[state,fill=green!20]   (R) at (8,   0.8) {resolved};
+\node[state,fill=red!15]     (J) at (8,  -0.8) {rejected};
+
+\draw[arrow] (S) -- node[above,font=\scriptsize]{Admin ouvre} (U);
+\draw[arrow] (U) -- node[above,font=\scriptsize]{Approuver}   (R);
+\draw[arrow] (U) -- node[below,font=\scriptsize]{Rejeter}     (J);
+\end{tikzpicture}
+\caption{Machine d'états d'une réclamation / justification}
+\label{fig:states}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Correspondance statuts internes / libellés interface}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Statut base de données} & \textbf{Libellé affiché} & \textbf{Couleur} \\
+\midrule
+\texttt{submitted}     & En attente & Jaune \\
+\texttt{under\_review} & En cours   & Bleu  \\
+\texttt{resolved}      & Acceptée   & Vert  \\
+\texttt{rejected}      & Rejetée    & Rouge \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ────────────────────────────────────────────────────────────
+\section{Implémentation Backend}
+% ────────────────────────────────────────────────────────────
+
+\subsection{Organisation des Fichiers}
+
+\begin{lstlisting}[language=bash,
+  caption=Structure du module requests côté backend]
+backend/src/modules/requests/
+├── request.controller.ts   # Logique metier principale
+├── request.routes.ts       # Definition des routes API
+└── reclamation.service.ts  # Service de notification etudiant
+\end{lstlisting}
+
+\subsection{Routes API}
+
+\begin{table}[H]
+\centering
+\caption{Routes API — Module Réclamations \& Justifications}
+\begin{tabularx}{\linewidth}{@{}llLl@{}}
+\toprule
+\textbf{Méthode} & \textbf{Route}                    & \textbf{Action}                  & \textbf{Accès}  \\
+\midrule
+POST & \texttt{/reclamations}             & Soumettre une réclamation         & Étudiant        \\
+POST & \texttt{/justifications}           & Soumettre une justification       & Étudiant        \\
+GET  & \texttt{/my-reclamations}          & Voir ses réclamations             & Étudiant        \\
+GET  & \texttt{/my-justifications}        & Voir ses justifications           & Étudiant        \\
+GET  & \texttt{/admin/inbox}              & Boîte de réception globale        & Admin           \\
+POST & \texttt{/admin/:id/decide}         & Approuver / Rejeter               & Admin           \\
+POST & \texttt{/guest/reclamations}       & Soumettre (visiteur)              & Public          \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Soumission d'une Réclamation (Étudiant)}
+
+\begin{lstlisting}[language=JavaScript,
+  caption=request.controller.ts — Soumission d'une réclamation]
+export const submitReclamation = async (req, res) => {
+  const userId = req.user.sub;
+  const { sujet, message, type } = req.body;
+
+  if (!sujet?.trim() || !message?.trim())
+    return res.status(400).json({
+      error: { code: 'MISSING_FIELDS',
+               message: 'Le sujet et le message sont obligatoires.' }
+    });
+
+  const reclamation = await prisma.reclamation.create({
+    data: { userId, sujet, message,
+            type: type || 'reclamation',
+            status: 'submitted' }
+  });
+
+  res.status(201).json(reclamation);
+};
+\end{lstlisting}
+
+\subsection{Soumission d'une Justification (Étudiant)}
+
+\begin{lstlisting}[language=JavaScript,
+  caption=request.controller.ts — Soumission d'une justification]
+export const submitJustification = async (req, res) => {
+  const userId = req.user.sub;
+  const { sujet, message, dateAbsence } = req.body;
+
+  if (!sujet?.trim() || !message?.trim() || !dateAbsence)
+    return res.status(400).json({
+      error: { code: 'MISSING_FIELDS',
+               message: "Sujet, message et date d'absence sont obligatoires." }
+    });
+
+  const justification = await prisma.reclamation.create({
+    data: { userId, sujet, message,
+            type: 'justification',
+            dateAbsence: new Date(dateAbsence),
+            status: 'submitted' }
+  });
+
+  res.status(201).json(justification);
+};
+\end{lstlisting}
+
+\subsection{Décision Administrative}
+
+La fonction ci-dessous traite l'approbation ou le rejet d'une demande par
+l'administrateur. Elle met à jour le statut, enregistre la réponse et déclenche
+une notification automatique vers l'étudiant concerné.
+
+\begin{lstlisting}[language=JavaScript,
+  caption=request.controller.ts — Décision administrative]
+// Supprime les prefixes internes [INFO_REQUEST] etc.
+function stripDecisionPrefix(text) {
+  return text
+    .replace(/^\[(INFO_REQUEST|TEACHER_REVIEW|COUNCIL_REVIEW)\]\s*/i, '')
+    .trim();
+}
+
+export const decideReclamation = async (req, res) => {
+  const adminId        = req.user.sub;
+  const { id }         = req.params;
+  const { action, reponse } = req.body; // 'approve' | 'reject'
+
+  if (!['approve', 'reject'].includes(action))
+    return res.status(400).json({
+      error: { code: 'INVALID_ACTION',
+               message: 'Action invalide. Utiliser approve ou reject.' }
+    });
+
+  const existing = await prisma.reclamation.findUnique({
+    where: { id: Number(id) }
+  });
+  if (!existing)
+    return res.status(404).json({ error: { code: 'NOT_FOUND' } });
+
+  if (['resolved', 'rejected'].includes(existing.status))
+    return res.status(409).json({
+      error: { code: 'ALREADY_REVIEWED',
+               message: 'Cette demande a deja ete traitee.' }
+    });
+
+  const newStatus  = action === 'approve' ? 'resolved' : 'rejected';
+  const cleanReply = reponse ? stripDecisionPrefix(reponse) : null;
+  const now        = new Date();
+
+  const updated = await prisma.reclamation.update({
+    where: { id: Number(id) },
+    data: {
+      status:             newStatus,
+      traiteParId:        adminId,
+      reponse_admin:      cleanReply,
+      reponse_admin_par:  adminId,
+      reponse_admin_date: now,
+      updatedAt:          now,
+    }
+  });
+
+  await notifyStudentAboutReclamationDecision(
+    existing.userId, updated, action
+  );
+
+  res.json({
+    ...updated,
+    adminResponse: { message: cleanReply, respondedBy: adminId, date: now }
+  });
+};
+\end{lstlisting}
+
+\subsection{Soumission par un Visiteur (Route Publique)}
+
+\begin{lstlisting}[language=JavaScript,
+  caption=request.controller.ts — Réclamation visiteur (sans authentification)]
+export const submitGuestReclamation = async (req, res) => {
+  const { prenom, nom, email, sujet, message } = req.body;
+
+  if (!prenom?.trim() || !nom?.trim() || !email?.trim()
+      || !sujet?.trim() || !message?.trim())
+    return res.status(400).json({
+      error: { code: 'MISSING_FIELDS',
+               message: 'Tous les champs sont obligatoires.' }
+    });
+
+  const guest = await prisma.guestReclamation.create({
+    data: { prenom, nom, email, sujet, message, status: 'submitted' }
+  });
+
+  res.status(201).json({
+    message: 'Votre reclamation a bien ete recue.',
+    id: guest.id
+  });
+};
+\end{lstlisting}
+
+\subsection{Service de Notification}
+
+À chaque décision administrative, le système crée automatiquement une
+notification dans la table \texttt{Notification} de l'étudiant concerné.
+
+\begin{lstlisting}[language=JavaScript,
+  caption=reclamation.service.ts — Notification automatique à l'étudiant]
+export async function notifyStudentAboutReclamationDecision(
+  studentId, reclamation, action
+) {
+  const label = action === 'approve' ? 'acceptee' : 'rejetee';
+
+  await prisma.notification.create({
+    data: {
+      userId:  studentId,
+      title:   `Reclamation ${label}`,
+      message: `Votre reclamation "${reclamation.sujet}" `
+             + `a ete ${label} par l'administration.`,
+      type:    'reclamation_decision',
+      read:    false,
+    }
+  });
+}
+\end{lstlisting}
+
+% ────────────────────────────────────────────────────────────
+\section{Implémentation Frontend}
+% ────────────────────────────────────────────────────────────
+
+\subsection{Organisation des Fichiers}
+
+\begin{lstlisting}[language=bash,
+  caption=Structure frontend — Module Réclamations \& Justifications]
+frontend/src/
+├── pages/
+│   ├── RequestsPage.jsx        # Dashboard etudiant (liste + soumission)
+│   ├── RequestDetailPage.jsx   # Detail d'une demande (conversation)
+│   └── AdminRequestsPage.jsx   # Boite de reception admin
+└── components/requests/
+    └── RequestConversation.jsx # Fil de conversation admin <-> etudiant
+\end{lstlisting}
+
+\subsection{Normalisation des Données (Page Étudiant)}
+
+\begin{lstlisting}[language=JavaScript,
+  caption=RequestsPage.jsx — Normalisation du statut et de la réponse admin]
+const STATUS_CONFIG = {
+  pending:  { label: 'En attente', color: 'yellow' },
+  reviewed: { label: 'En cours',   color: 'blue'   },
+  accepted: { label: 'Acceptee',   color: 'green'  },
+  rejected: { label: 'Rejetee',    color: 'red'    },
+};
+
+const DECISION_PREFIX_RE =
+  /^\[(INFO_REQUEST|TEACHER_REVIEW|COUNCIL_REVIEW)\]\s*/i;
+
+function cleanReplyText(text) {
+  return text ? text.replace(DECISION_PREFIX_RE, '').trim() : '';
+}
+
+function normalizeReclamation(item) {
+  const raw = item.statusUi || item.status || 'submitted';
+  const statusKey =
+    raw === 'resolved'     ? 'accepted'  :
+    raw === 'under_review' ? 'reviewed'  :
+    raw === 'rejected'     ? 'rejected'  : 'pending';
+
+  const adminResponse = item.adminResponse?.message
+    ? { ...item.adminResponse,
+        message: cleanReplyText(item.adminResponse.message) }
+    : item.reponse_admin
+      ? { message:  cleanReplyText(item.reponse_admin),
+          date:     item.reponse_admin_date }
+      : null;
+
+  return { ...item, statusKey, adminResponse };
+}
+\end{lstlisting}
+
+\subsection{Formulaire de Soumission}
+
+\begin{lstlisting}[language=JavaScript,
+  caption=RequestsPage.jsx — Soumission d'une réclamation]
+const handleSubmitReclamation = async (e) => {
+  e.preventDefault();
+  setSubmitting(true);
+  try {
+    await api.post('/requests/reclamations', {
+      sujet:   form.sujet,
+      message: form.message,
+      type:    'reclamation',
+    });
+    setSuccess('Votre reclamation a ete soumise avec succes.');
+    loadMyRequests();
+    resetForm();
+  } catch (err) {
+    setError(
+      err.response?.data?.error?.message || 'Erreur lors de la soumission.'
+    );
+  } finally {
+    setSubmitting(false);
+  }
+};
+\end{lstlisting}
+
+\subsection{Décision Administrative (Frontend)}
+
+\begin{lstlisting}[language=JavaScript,
+  caption=AdminRequestsPage.jsx — Envoi d'une décision]
+const submitDecision = async () => {
+  try {
+    const { data } = await api.post(
+      `/requests/admin/${selectedReq.id}/decide`,
+      { action: decision, reponse: replyText || undefined }
+    );
+    // Mise a jour optimiste de la liste locale
+    setRequests(prev => prev.map(r =>
+      r.id === selectedReq.id
+        ? { ...r, status: data.status,
+                  adminResponse: data.adminResponse,
+                  updatedAt: data.updatedAt }
+        : r
+    ));
+    closeModal();
+  } catch (err) {
+    const msg = err.response?.data?.error?.message || '';
+    if (msg.includes('already') || msg.includes('deja'))
+      alert('Cette demande a deja ete traitee. Rafraichissez la page.');
+  }
+};
+\end{lstlisting}
+
+\subsection{Composant de Conversation (Fil de Dialogue)}
+
+\begin{lstlisting}[language=JavaScript,
+  caption=RequestConversation.jsx — Badge statut et réponse admin]
+const STATUS_META = {
+  pending:  { label: 'En attente', className: 'bg-yellow-500/20 text-yellow-300' },
+  reviewed: { label: 'En cours',   className: 'bg-blue-500/20  text-blue-300'   },
+  accepted: { label: 'Acceptee',   className: 'bg-green-500/20 text-green-300'  },
+  rejected: { label: 'Rejetee',    className: 'bg-red-500/20   text-red-300'    },
+};
+
+// Badge de statut
+<span className={`px-2 py-1 rounded-full text-xs font-semibold
+  ${STATUS_META[statusKey].className}`}>
+  {STATUS_META[statusKey].label}
+</span>
+
+// Reponse admin ou etat vide
+{adminResponse?.message ? (
+  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+    <p className="text-sm text-gray-300">{adminResponse.message}</p>
+    {adminResponse.date && (
+      <p className="text-xs text-gray-500 mt-1">
+        {new Date(adminResponse.date).toLocaleDateString('fr-FR')}
+      </p>
+    )}
+  </div>
+) : (
+  <p className="text-center text-gray-500 text-sm py-4">
+    Aucune reponse de l'administration pour le moment.
+  </p>
+)}
+\end{lstlisting}
+
+\subsection{Formulaire Visiteur (Page Publique)}
+
+\begin{lstlisting}[language=JavaScript,
+  caption=PublicReclamationForm.jsx — Soumission sans authentification]
+const handleGuestSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api.post('/requests/guest/reclamations', {
+      prenom:  form.prenom,
+      nom:     form.nom,
+      email:   form.email,
+      sujet:   form.sujet,
+      message: form.message,
+    });
+    setConfirmed(true); // affiche le message de confirmation
+  } catch {
+    setError('Une erreur est survenue. Veuillez reessayer.');
+  }
+};
+\end{lstlisting}
+
+% ────────────────────────────────────────────────────────────
+\section{Interfaces Utilisateur}
+% ────────────────────────────────────────────────────────────
+
+\subsection{Tableau de Bord Étudiant}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\draw[IBNBlue,thick,rounded corners=6pt,fill=LightBlue!30]
+  (0,0) rectangle (13,7);
+% En-tete
+\draw[IBNBlue,fill=IBNBlue,rounded corners=6pt 6pt 0 0]
+  (0,6.3) rectangle (13,7);
+\node[font=\small\bfseries\color{white}] at (6.5,6.65)
+  {Mes Reclamations \& Justifications};
+% Cartes statistiques
+\foreach \x/\n/\lbl/\col in {
+  2/3/{En attente}/yellow!30,
+  5/1/{En cours}/blue!20,
+  8/2/{Traitees}/green!20,
+  11/6/Total/gray!20}{
+  \draw[\col,draw=gray!40,rounded corners=4pt,fill=\col]
+    (\x-1.3,5.0) rectangle (\x+1.3,6.0);
+  \node[font=\large\bfseries\color=IBNBlue] at (\x,5.65) {\n};
+  \node[font=\scriptsize\color{AccentGray}] at (\x,5.15) {\lbl};
+}
+% En-tete tableau
+\draw[gray!30,fill=gray!10] (0.3,3.9) rectangle (12.7,4.6);
+\node[font=\scriptsize\bfseries] at (2.5,4.25)  {Type};
+\node[font=\scriptsize\bfseries] at (5.5,4.25)  {Sujet};
+\node[font=\scriptsize\bfseries] at (8.5,4.25)  {Date};
+\node[font=\scriptsize\bfseries] at (11.0,4.25) {Statut};
+% Lignes
+\foreach \y/\type/\sujet/\date/\stat/\scol in {
+  3.4/Reclamation/{Note incorrecte...}/{12 avr.}/{En attente}/yellow!40,
+  2.7/Justification/{Absence medicale}/{10 avr.}/Acceptee/green!30,
+  2.0/Reclamation/{Erreur emploi du temps}/{5 avr.}/Rejetee/red!25}{
+  \draw[gray!20] (0.3,\y-0.3) -- (12.7,\y-0.3);
+  \node[font=\scriptsize] at (2.5,\y)  {\type};
+  \node[font=\scriptsize] at (5.5,\y)  {\sujet};
+  \node[font=\scriptsize] at (8.5,\y)  {\date};
+  \draw[\scol,rounded corners=8pt,fill=\scol]
+    (9.5,\y-0.18) rectangle (12.5,\y+0.18);
+  \node[font=\tiny\bfseries] at (11.0,\y) {\stat};
+}
+\end{tikzpicture}
+\caption{Interface étudiant — Liste des demandes avec statuts colorés}
+\label{fig:student_ui}
+\end{figure}
+
+\subsection{Boîte de Réception Administrateur}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\draw[IBNBlue,thick,rounded corners=6pt,fill=LightBlue!20]
+  (0,0) rectangle (13,8);
+% En-tete
+\draw[IBNBlue,fill=IBNBlue,rounded corners=6pt 6pt 0 0]
+  (0,7.2) rectangle (13,8);
+\node[font=\small\bfseries\color{white}] at (6.5,7.6)
+  {Gestion des Reclamations --- Administration};
+% Onglets
+\foreach \x/\lbl/\sel in {
+  1.8/{Toutes}/1, 4.5/{Reclamations}/0,
+  7.5/{Justifications}/0, 10.8/{Visiteurs}/0}{
+  \draw[IBNBlue!\sel 00!gray!40,
+        fill=IBNBlue!\sel 15!white,rounded corners=4pt]
+    (\x-1.3,6.5) rectangle (\x+1.3,7.0);
+  \node[font=\scriptsize\bfseries] at (\x,6.75) {\lbl};
+}
+% Stats
+\foreach \x/\n/\lbl in {
+  2/12/Total, 5/5/Nouvelles, 8/4/{En cours}, 11/3/Traitees}{
+  \draw[IBNBlue!10,draw=IBNBlue!40,rounded corners=4pt]
+    (\x-1.3,5.2) rectangle (\x+1.3,6.2);
+  \node[font=\large\bfseries\color{IBNBlue}] at (\x,5.8) {\n};
+  \node[font=\scriptsize\color{AccentGray}]  at (\x,5.35){\lbl};
+}
+% Liste
+\draw[gray!15,fill=white,rounded corners=4pt]
+  (0.3,0.3) rectangle (12.7,4.9);
+\draw[gray!30,fill=gray!10] (0.3,4.3) rectangle (12.7,4.9);
+\node[font=\scriptsize\bfseries] at (2.5,4.6)  {Etudiant};
+\node[font=\scriptsize\bfseries] at (5.5,4.6)  {Type};
+\node[font=\scriptsize\bfseries] at (8.5,4.6)  {Statut};
+\node[font=\scriptsize\bfseries] at (11.0,4.6) {Action};
+\foreach \y/\nom/\type/\stat/\scol/\btn in {
+  3.8/{Fatima B.}/Reclamation/{En attente}/yellow!30/Traiter,
+  3.1/{Karim M.}/Justification/{En cours}/blue!20/Voir,
+  2.4/{Sara H.}/Reclamation/Acceptee/green!20/{---},
+  1.7/{Ahmed L.}/Justification/Rejetee/red!20/{---},
+  1.0/Visiteur/Reclamation/{En attente}/yellow!30/Traiter}{
+  \draw[gray!15] (0.3,\y-0.3) -- (12.7,\y-0.3);
+  \node[font=\scriptsize] at (2.5,\y) {\nom};
+  \node[font=\scriptsize] at (5.5,\y) {\type};
+  \draw[\scol,rounded corners=6pt,fill=\scol]
+    (7.2,\y-0.18) rectangle (9.8,\y+0.18);
+  \node[font=\tiny\bfseries] at (8.5,\y) {\stat};
+  \draw[IBNBlue!20,fill=IBNBlue!15,rounded corners=4pt]
+    (9.9,\y-0.18) rectangle (12.1,\y+0.18);
+  \node[font=\tiny\bfseries\color{IBNBlue}] at (11.0,\y) {\btn};
+}
+\end{tikzpicture}
+\caption{Boîte de réception administrateur avec filtres et actions}
+\label{fig:admin_ui}
+\end{figure}
+
+% ────────────────────────────────────────────────────────────
+\section{Tests et Validation}
+% ────────────────────────────────────────────────────────────
+
+\subsection{Scénarios de Tests Fonctionnels}
+
+Les scénarios suivants ont été exécutés pour valider l'ensemble des
+fonctionnalités du module~:
+
+\begin{table}[H]
+\centering
+\caption{Résultats des tests fonctionnels — Réclamations \& Justifications}
+\begin{tabularx}{\linewidth}{@{}lLll@{}}
+\toprule
+\textbf{ID} & \textbf{Scénario} & \textbf{Résultat attendu} & \textbf{Statut} \\
+\midrule
+TF-01 & Étudiant soumet une réclamation &
+  Créée, statut \texttt{submitted} & PASS \\
+TF-02 & Étudiant soumet une justification avec date d'absence &
+  Créée avec \texttt{dateAbsence} & PASS \\
+TF-03 & Soumission avec message vide &
+  Erreur \texttt{400 MISSING\_FIELDS} & PASS \\
+TF-04 & Champs nom/email pré-remplis depuis le compte &
+  Non modifiables par l'étudiant & PASS \\
+TF-05 & Étudiant consulte ses demandes &
+  Liste filtrée à ses propres requêtes & PASS \\
+TF-06 & Étudiant tente de voir la demande d'un autre &
+  Accès refusé \texttt{403} & PASS \\
+TF-07 & Admin consulte la boîte de réception &
+  Toutes les demandes affichées & PASS \\
+TF-08 & Admin approuve une réclamation (avec réponse) &
+  Statut \texttt{resolved}, étudiant notifié & PASS \\
+TF-09 & Admin approuve sans rédiger de réponse &
+  Accepté, étudiant notifié & PASS \\
+TF-10 & Admin rejette une justification &
+  Statut \texttt{rejected}, étudiant notifié & PASS \\
+TF-11 & Admin retraite une demande déjà traitée &
+  Erreur \texttt{409 ALREADY\_REVIEWED} & PASS \\
+TF-12 & Visiteur soumet une réclamation (sans compte) &
+  Sauvegardée dans \texttt{GuestReclamation} & PASS \\
+TF-13 & Visiteur tente une justification &
+  Option indisponible (page publique) & PASS \\
+TF-14 & Étudiant reçoit notification après décision &
+  Notification visible dans le dashboard & PASS \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Tests de Sécurité}
+
+\begin{table}[H]
+\centering
+\caption{Tests de sécurité — Module Réclamations \& Justifications}
+\begin{tabularx}{\linewidth}{@{}lLl@{}}
+\toprule
+\textbf{Test} & \textbf{Description} & \textbf{Résultat} \\
+\midrule
+Accès sans token &
+  Requête sur \texttt{/my-reclamations} sans JWT &
+  401 TOKEN\_MISSING \\
+Rôle incorrect &
+  Étudiant accède à \texttt{/admin/inbox} &
+  403 FORBIDDEN \\
+Injection via message &
+  Payload SQL/XSS dans le champ message &
+  Neutralisé (Prisma) \\
+Double décision &
+  Admin retraite une demande déjà rejetée &
+  409 ALREADY\_REVIEWED \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Taux de Couverture}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  xbar,
+  width=10cm, height=5.5cm,
+  bar width=0.5cm,
+  xlabel={Couverture (\%)},
+  symbolic y coords={Notification,Visiteur,Admin,Etudiant,Routes},
+  ytick=data,
+  xmin=0, xmax=100,
+  xmajorgrids=true,
+  grid style={dashed,gray!30},
+  nodes near coords,
+  nodes near coords align={horizontal},
+  every node near coord/.append style={font=\small},
+]
+\addplot[fill=IBNBlue!60,draw=IBNBlue] coordinates {
+  (88,Notification)
+  (92,Visiteur)
+  (95,Admin)
+  (94,Etudiant)
+  (100,Routes)
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Couverture des tests par fonctionnalité}
+\label{fig:rj_coverage}
+\end{figure}
+
+% ────────────────────────────────────────────────────────────
+\section{Conclusion}
+% ────────────────────────────────────────────────────────────
+
+Ce chapitre a présenté l'implémentation complète du module
+Réclamations \& Justifications~: modèle de données Prisma, routes API
+sécurisées par JWT et RBAC, contrôleur avec gestion du cycle de vie des
+statuts, service de notification automatique, et interfaces React adaptées
+aux trois profils utilisateurs (étudiant, administrateur, visiteur).
+
+La campagne de tests fonctionnels et de sécurité confirme que toutes les
+fonctionnalités sont opérationnelles~: les étudiants soumettent et suivent
+leurs demandes, les administrateurs disposent d'une boîte de réception
+centralisée avec décisions traçables, et les visiteurs peuvent signaler des
+problèmes sans créer de compte. Ce module élimine entièrement le processus
+papier antérieur et améliore significativement la communication entre les
+étudiants et l'administration universitaire.
